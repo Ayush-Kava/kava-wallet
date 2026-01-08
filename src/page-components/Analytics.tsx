@@ -1,0 +1,366 @@
+'use client';
+  
+import { useMemo, useState } from 'react';
+import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear } from 'date-fns';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTransactions } from '@/hooks/useTransactions';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  AreaChart,
+  Area,
+} from 'recharts';
+import { Calendar } from 'lucide-react';
+
+type Period = 'month' | 'year';
+
+const Analytics = () => {
+  const { transactions } = useTransactions();
+  const [period, setPeriod] = useState<Period>('month');
+
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    if (period === 'month') {
+      return { start: startOfMonth(now), end: endOfMonth(now), label: format(now, 'MMMM yyyy') };
+    }
+    return { start: startOfYear(now), end: endOfYear(now), label: format(now, 'yyyy') };
+  }, [period]);
+
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((t) => {
+      const date = new Date(t.date);
+      return date >= dateRange.start && date <= dateRange.end;
+    });
+  }, [transactions, dateRange]);
+
+  const stats = useMemo(() => {
+    const income = filteredTransactions
+      .filter((t) => t.type === 'income')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+    const expenses = filteredTransactions
+      .filter((t) => t.type === 'expense')
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+    return { income, expenses, savings: income - expenses, savingsRate: income > 0 ? ((income - expenses) / income) * 100 : 0 };
+  }, [filteredTransactions]);
+
+  const categoryData = useMemo(() => {
+    const byCategory: Record<string, { name: string; value: number; color: string }> = {};
+    
+    filteredTransactions
+      .filter((t) => t.type === 'expense')
+      .forEach((t) => {
+        const name = t.categories?.name || 'Uncategorized';
+        const color = t.categories?.color || '#64748B';
+        if (!byCategory[name]) byCategory[name] = { name, value: 0, color };
+        byCategory[name].value += Number(t.amount);
+      });
+
+    return Object.values(byCategory).sort((a, b) => b.value - a.value);
+  }, [filteredTransactions]);
+
+  const monthlyTrend = useMemo(() => {
+    const months: { name: string; income: number; expenses: number; savings: number }[] = [];
+    const numMonths = period === 'year' ? 12 : 6;
+
+    for (let i = numMonths - 1; i >= 0; i--) {
+      const monthDate = subMonths(new Date(), i);
+      const start = startOfMonth(monthDate);
+      const end = endOfMonth(monthDate);
+
+      const monthTx = transactions.filter((t) => {
+        const date = new Date(t.date);
+        return date >= start && date <= end;
+      });
+
+      const income = monthTx.filter((t) => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
+      const expenses = monthTx.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
+
+      months.push({
+        name: format(monthDate, 'MMM'),
+        income,
+        expenses,
+        savings: income - expenses,
+      });
+    }
+
+    return months;
+  }, [transactions, period]);
+
+  const incomeByCategory = useMemo(() => {
+    const byCategory: Record<string, { name: string; value: number; color: string }> = {};
+    
+    filteredTransactions
+      .filter((t) => t.type === 'income')
+      .forEach((t) => {
+        const name = t.categories?.name || 'Other Income';
+        const color = t.categories?.color || '#10B981';
+        if (!byCategory[name]) byCategory[name] = { name, value: 0, color };
+        byCategory[name].value += Number(t.amount);
+      });
+
+    return Object.values(byCategory).sort((a, b) => b.value - a.value);
+  }, [filteredTransactions]);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-display font-bold">Analytics</h1>
+            <p className="text-muted-foreground">Insights into your financial habits</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-lg overflow-hidden border-2 border-border">
+              <button
+                onClick={() => setPeriod('month')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  period === 'month' ? 'gradient-primary text-primary-foreground' : 'bg-card hover:bg-muted'
+                }`}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setPeriod('year')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  period === 'year' ? 'gradient-primary text-primary-foreground' : 'bg-card hover:bg-muted'
+                }`}
+              >
+                Yearly
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Period Label */}
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Calendar size={18} />
+          <span>{dateRange.label}</span>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="shadow-card border-0">
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Income</p>
+              <p className="text-2xl font-bold font-display text-success">{formatCurrency(stats.income)}</p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-card border-0">
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Total Expenses</p>
+              <p className="text-2xl font-bold font-display text-destructive">{formatCurrency(stats.expenses)}</p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-card border-0">
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Net Savings</p>
+              <p className={`text-2xl font-bold font-display ${stats.savings >= 0 ? 'text-success' : 'text-destructive'}`}>
+                {formatCurrency(stats.savings)}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-card border-0">
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">Savings Rate</p>
+              <p className={`text-2xl font-bold font-display ${stats.savingsRate >= 0 ? 'text-success' : 'text-destructive'}`}>
+                {stats.savingsRate.toFixed(1)}%
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Charts Row 1 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Trend Chart */}
+          <Card className="shadow-card border-0">
+            <CardHeader>
+              <CardTitle className="font-display">Income vs Expenses Trend</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={monthlyTrend}>
+                    <defs>
+                      <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--destructive))" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="hsl(var(--destructive))" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(v) => `₹${v/1000}k`} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                      formatter={(value: number) => formatCurrency(value)}
+                    />
+                    <Legend />
+                    <Area type="monotone" dataKey="income" name="Income" stroke="hsl(var(--success))" fill="url(#incomeGrad)" strokeWidth={2} />
+                    <Area type="monotone" dataKey="expenses" name="Expenses" stroke="hsl(var(--destructive))" fill="url(#expenseGrad)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Savings Trend */}
+          <Card className="shadow-card border-0">
+            <CardHeader>
+              <CardTitle className="font-display">Monthly Savings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={monthlyTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(v) => `₹${v/1000}k`} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                      formatter={(value: number) => formatCurrency(value)}
+                    />
+                    <Bar
+                      dataKey="savings"
+                      name="Savings"
+                      radius={[4, 4, 0, 0]}
+                      fill="hsl(var(--primary))"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Charts Row 2 - Category Breakdown */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Expense Categories */}
+          <Card className="shadow-card border-0">
+            <CardHeader>
+              <CardTitle className="font-display">Expense Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {categoryData.length === 0 ? (
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                  No expense data for this period
+                </div>
+              ) : (
+                <>
+                  <div className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={categoryData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {categoryData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                          formatter={(value: number) => formatCurrency(value)}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="mt-4 space-y-2 max-h-[150px] overflow-y-auto">
+                    {categoryData.map((cat) => (
+                      <div key={cat.name} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
+                          <span className="text-muted-foreground">{cat.name}</span>
+                        </div>
+                        <span className="font-medium">{formatCurrency(cat.value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Income Sources */}
+          <Card className="shadow-card border-0">
+            <CardHeader>
+              <CardTitle className="font-display">Income Sources</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {incomeByCategory.length === 0 ? (
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                  No income data for this period
+                </div>
+              ) : (
+                <>
+                  <div className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={incomeByCategory}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={80}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {incomeByCategory.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                          formatter={(value: number) => formatCurrency(value)}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="mt-4 space-y-2 max-h-[150px] overflow-y-auto">
+                    {incomeByCategory.map((cat) => (
+                      <div key={cat.name} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
+                          <span className="text-muted-foreground">{cat.name}</span>
+                        </div>
+                        <span className="font-medium">{formatCurrency(cat.value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+};
+
+export default Analytics;
