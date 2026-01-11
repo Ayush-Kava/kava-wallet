@@ -210,12 +210,28 @@ const Transactions = () => {
                   <Label>Category</Label>
                   <Select value={categoryId} onValueChange={setCategoryId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue placeholder="Select category">
+                        {categoryId && categories.find(c => c.id === categoryId) && (
+                          <div className="flex items-center gap-2">
+                            <span 
+                              className="w-3 h-3 rounded-full flex-shrink-0" 
+                              style={{ backgroundColor: categories.find(c => c.id === categoryId)?.color || '#6366F1' }}
+                            />
+                            {categories.find(c => c.id === categoryId)?.name}
+                          </div>
+                        )}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
+                          <div className="flex items-center gap-2">
+                            <span 
+                              className="w-3 h-3 rounded-full flex-shrink-0" 
+                              style={{ backgroundColor: cat.color || '#6366F1' }}
+                            />
+                            <span>{cat.name}</span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>

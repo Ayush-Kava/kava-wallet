@@ -1,4 +1,4 @@
-import { Waves } from 'lucide-react';
+import { Wallet } from 'lucide-react';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -21,11 +21,11 @@ const Logo = ({ size = 'md', showText = true }: LogoProps) => {
   return (
     <div className="flex items-center gap-2">
       <div className={`${sizeClasses[size]} gradient-primary rounded-xl flex items-center justify-center shadow-glow`}>
-        <Waves className="text-primary-foreground" size={size === 'lg' ? 28 : size === 'md' ? 22 : 18} />
+        <Wallet className="text-primary-foreground" size={size === 'lg' ? 28 : size === 'md' ? 22 : 18} />
       </div>
       {showText && (
         <span className={`font-display font-bold ${textClasses[size]} gradient-text`}>
-          KavaFlow
+          Kava Wallet
         </span>
       )}
     </div>

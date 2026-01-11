@@ -1,12 +1,30 @@
 'use client'; 
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { z } from 'zod';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useAccounts } from '@/hooks/useAccounts';
+import { useCategories } from '@/hooks/useCategories';
 import {
   TrendingUp,
   TrendingDown,
@@ -14,6 +32,7 @@ import {
   Plus,
   ArrowUpRight,
   ArrowDownRight,
+  Loader2,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -29,9 +48,71 @@ import {
 } from 'recharts';
 import Link from 'next/link';
 
+const transactionSchema = z.object({
+  account_id: z.string().min(1, 'Please select an account'),
+  category_id: z.string().optional(),
+  type: z.enum(['income', 'expense']),
+  amount: z.number().positive('Amount must be positive'),
+  description: z.string().max(255).optional(),
+  date: z.string().min(1, 'Please select a date'),
+});
+
 const Dashboard = () => {
-  const { transactions } = useTransactions();
+  const { transactions, createTransaction } = useTransactions();
   const { accounts, totalBalance } = useAccounts();
+  const { incomeCategories, expenseCategories } = useCategories();
+
+  // Transaction form state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [type, setType] = useState<'income' | 'expense'>('expense');
+  const [accountId, setAccountId] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+
+  const categories = type === 'income' ? incomeCategories : expenseCategories;
+
+  const resetForm = () => {
+    setType('expense');
+    setAccountId('');
+    setCategoryId('');
+    setAmount('');
+    setDescription('');
+    setDate(format(new Date(), 'yyyy-MM-dd'));
+    setFormErrors({});
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormErrors({});
+
+    const result = transactionSchema.safeParse({
+      account_id: accountId,
+      category_id: categoryId || undefined,
+      type,
+      amount: parseFloat(amount),
+      description: description || undefined,
+      date,
+    });
+
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) errors[err.path[0] as string] = err.message;
+      });
+      setFormErrors(errors);
+      return;
+    }
+
+    setIsSubmitting(true);
+    await createTransaction.mutateAsync(result.data);
+    setIsSubmitting(false);
+    setDialogOpen(false);
+    resetForm();
+  };
 
   const currentMonthStats = useMemo(() => {
     const now = new Date();
@@ -51,8 +132,13 @@ const Dashboard = () => {
       .filter((t) => t.type === 'expense')
       .reduce((sum, t) => sum + Number(t.amount), 0);
 
-    return { income, expenses, savings: income - expenses };
-  }, [transactions]);
+    // Net savings = Total balance (which already reflects all transactions)
+    // OR if we want monthly: income - expenses for the month
+    // The balance already accounts for initial deposits and all transactions
+    const savings = totalBalance;
+
+    return { income, expenses, savings };
+  }, [transactions, totalBalance]);
 
   const chartData = useMemo(() => {
     const months: { name: string; income: number; expenses: number }[] = [];
@@ -129,11 +215,130 @@ const Dashboard = () => {
             <h1 className="text-2xl lg:text-3xl font-display font-bold">Dashboard</h1>
             <p className="text-muted-foreground">Welcome back! Here&apos;s your financial overview.</p>
           </div>
-          <Button asChild>
-            <Link href="/transactions">
-              <Plus size={18} /> Add Transaction
-            </Link>
-          </Button>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus size={18} /> Add Transaction
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle className="font-display">New Transaction</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Type Toggle */}
+                <div className="flex rounded-lg overflow-hidden border-2 border-border">
+                  <button
+                    type="button"
+                    onClick={() => { setType('expense'); setCategoryId(''); }}
+                    className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                      type === 'expense' ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-foreground'
+                    }`}
+                  >
+                    Expense
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setType('income'); setCategoryId(''); }}
+                    className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                      type === 'income' ? 'bg-success text-success-foreground' : 'bg-muted text-foreground'
+                    }`}
+                  >
+                    Income
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Account *</Label>
+                  <Select value={accountId} onValueChange={setAccountId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accounts.map((acc) => (
+                        <SelectItem key={acc.id} value={acc.id}>
+                          {acc.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.account_id && <p className="text-sm text-destructive">{formErrors.account_id}</p>}
+                  {accounts.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Please create an account first in the Accounts page.</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Select value={categoryId} onValueChange={setCategoryId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category">
+                        {categoryId && categories.find(c => c.id === categoryId) && (
+                          <div className="flex items-center gap-2">
+                            <span 
+                              className="w-3 h-3 rounded-full flex-shrink-0" 
+                              style={{ backgroundColor: categories.find(c => c.id === categoryId)?.color || '#6366F1' }}
+                            />
+                            {categories.find(c => c.id === categoryId)?.name}
+                          </div>
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          <div className="flex items-center gap-2">
+                            <span 
+                              className="w-3 h-3 rounded-full flex-shrink-0" 
+                              style={{ backgroundColor: cat.color || '#6366F1' }}
+                            />
+                            <span>{cat.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Amount *</Label>
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    min="0"
+                    step="0.01"
+                  />
+                  {formErrors.amount && <p className="text-sm text-destructive">{formErrors.amount}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Input
+                    placeholder="What was this for?"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    maxLength={255}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Date *</Label>
+                  <Input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                  />
+                  {formErrors.date && <p className="text-sm text-destructive">{formErrors.date}</p>}
+                </div>
+
+                <Button type="submit" className="w-full" disabled={isSubmitting || accounts.length === 0}>
+                  {isSubmitting ? <Loader2 className="animate-spin" /> : 'Add Transaction'}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Stats Cards */}

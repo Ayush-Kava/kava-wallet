@@ -33,6 +33,7 @@ export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [activeTab, setActiveTab] = useState('signin');
 
   // Sign In form state
   const [signInEmail, setSignInEmail] = useState('');
@@ -73,16 +74,16 @@ export default function AuthPage() {
     e.preventDefault();
     setErrors({});
     
-    const result = signUpSchema.safeParse({
+    const validationResult = signUpSchema.safeParse({
       fullName: signUpName,
       email: signUpEmail,
       password: signUpPassword,
       confirmPassword: signUpConfirmPassword,
     });
     
-    if (!result.success) {
+    if (!validationResult.success) {
       const fieldErrors: Record<string, string> = {};
-      result.error.errors.forEach((err) => {
+      validationResult.error.errors.forEach((err) => {
         if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
       });
       setErrors(fieldErrors);
@@ -90,8 +91,17 @@ export default function AuthPage() {
     }
 
     setIsLoading(true);
-    await signUp(signUpEmail, signUpPassword, signUpName);
+    const signUpResult = await signUp(signUpEmail, signUpPassword, signUpName);
     setIsLoading(false);
+    
+    // If signup was successful (no error), switch to signin tab
+    if (!signUpResult.error) {
+      setSignUpName('');
+      setSignUpEmail('');
+      setSignUpPassword('');
+      setSignUpConfirmPassword('');
+      setActiveTab('signin');
+    }
   };
 
   if (authLoading) {
@@ -171,7 +181,7 @@ export default function AuthPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="signin" className="w-full">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-6">
                   <TabsTrigger value="signin">Sign In</TabsTrigger>
                   <TabsTrigger value="signup">Sign Up</TabsTrigger>

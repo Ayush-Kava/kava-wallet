@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import { useAuth } from '@/contexts/AuthContext';
 import Logo from '@/components/Logo';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -23,6 +24,10 @@ import {
   X,
   ChevronRight,
   User,
+  MoreVertical,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -42,6 +47,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const pathname = usePathname();
   const router = useRouter();
   const { user, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleSignOut = async () => {
@@ -97,7 +103,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                   onClick={() => setSidebarOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${
                     isActive
-                      ? 'gradient-primary text-primary-foreground shadow-glow'
+                      ? 'gradient-primary text-primary-foreground shadow-lg shadow-primary/30'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                 >
@@ -113,43 +119,52 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
           {/* User Menu */}
           <div className="p-4 border-t border-border">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-muted transition-colors">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="gradient-primary text-primary-foreground font-semibold">
-                      {getInitials()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 text-left">
-                    <p className="text-sm font-semibold truncate">
-                      {user?.user_metadata?.full_name || 'User'}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {user?.email}
-                    </p>
-                  </div>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => router.push('/settings')}>
-                  <User size={16} className="mr-2" />
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
-                  <LogOut size={16} className="mr-2" />
-                  Sign Out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* Footer */}
-          <div className="p-4 border-t border-border">
-            <p className="text-xs text-center text-muted-foreground">
-              Kava Group of Companies
-            </p>
+            <div className="flex items-center gap-3 p-3 rounded-xl">
+              <Avatar className="h-10 w-10 flex-shrink-0">
+                <AvatarFallback className="gradient-primary text-primary-foreground font-semibold">
+                  {getInitials()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-sm font-semibold truncate text-foreground">
+                  {user?.user_metadata?.full_name || 'User'}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {user?.email}
+                </p>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-2 rounded-lg hover:bg-muted transition-colors flex-shrink-0">
+                    <MoreVertical size={18} className="text-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onClick={() => router.push('/settings')}>
+                    <User size={16} className="mr-2" />
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setTheme('light')} className={theme === 'light' ? 'bg-muted' : ''}>
+                    <Sun size={16} className="mr-2" />
+                    Light
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme('dark')} className={theme === 'dark' ? 'bg-muted' : ''}>
+                    <Moon size={16} className="mr-2" />
+                    Dark
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setTheme('system')} className={theme === 'system' ? 'bg-muted' : ''}>
+                    <Monitor size={16} className="mr-2" />
+                    System
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                    <LogOut size={16} className="mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </aside>

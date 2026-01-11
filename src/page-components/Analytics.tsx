@@ -5,6 +5,7 @@ import { format, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear } f
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTransactions } from '@/hooks/useTransactions';
+import { useAccounts } from '@/hooks/useAccounts';
 import {
   BarChart,
   Bar,
@@ -26,6 +27,7 @@ type Period = 'month' | 'year';
 
 const Analytics = () => {
   const { transactions } = useTransactions();
+  const { totalBalance } = useAccounts();
   const [period, setPeriod] = useState<Period>('month');
 
   const dateRange = useMemo(() => {
@@ -50,8 +52,18 @@ const Analytics = () => {
     const expenses = filteredTransactions
       .filter((t) => t.type === 'expense')
       .reduce((sum, t) => sum + Number(t.amount), 0);
-    return { income, expenses, savings: income - expenses, savingsRate: income > 0 ? ((income - expenses) / income) * 100 : 0 };
-  }, [filteredTransactions]);
+    
+    // Net Savings = Total Balance (accounts for initial deposits + income - expenses)
+    const savings = totalBalance;
+    
+    // Savings Rate calculation:
+    // If there's income this period, calculate as percentage of income saved
+    // If no income but positive balance, the rate is based on what's left after expenses
+    const totalAvailable = income > 0 ? income : totalBalance + expenses;
+    const savingsRate = totalAvailable > 0 ? (savings / totalAvailable) * 100 : 0;
+    
+    return { income, expenses, savings, savingsRate };
+  }, [filteredTransactions, totalBalance]);
 
   const categoryData = useMemo(() => {
     const byCategory: Record<string, { name: string; value: number; color: string }> = {};
