@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { z } from 'zod';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { CreateCategoryDialog } from '@/components/CreateCategoryDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,8 +65,10 @@ const Dashboard = () => {
 
   // Transaction form state
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [createCategoryOpen, setCreateCategoryOpen] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [accountId, setAccountId] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -83,6 +86,14 @@ const Dashboard = () => {
     setDescription('');
     setDate(format(new Date(), 'yyyy-MM-dd'));
     setFormErrors({});
+  };
+
+  const handleCategoryChange = (value: string) => {
+    if (value === 'create_new') {
+      setCreateCategoryOpen(true);
+    } else {
+      setCategoryId(value);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -270,7 +281,7 @@ const Dashboard = () => {
 
                 <div className="space-y-2">
                   <Label>Category</Label>
-                  <Select value={categoryId} onValueChange={setCategoryId}>
+                  <Select value={categoryId} onValueChange={handleCategoryChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select category">
                         {categoryId && categories.find(c => c.id === categoryId) && (
@@ -285,6 +296,12 @@ const Dashboard = () => {
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="create_new" className="font-medium text-primary cursor-pointer hover:bg-primary/10">
+                        <div className="flex items-center gap-2">
+                          <Plus size={14} />
+                          Create New Category
+                        </div>
+                      </SelectItem>
                       {categories.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>
                           <div className="flex items-center gap-2">
@@ -339,6 +356,13 @@ const Dashboard = () => {
               </form>
             </DialogContent>
           </Dialog>
+
+          <CreateCategoryDialog 
+            open={createCategoryOpen} 
+            onOpenChange={setCreateCategoryOpen}
+            type={type}
+            onCategoryCreated={(id) => setCategoryId(id)}
+          />
         </div>
 
         {/* Stats Cards */}
@@ -439,7 +463,9 @@ const Dashboard = () => {
                         backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '8px',
+                        color: 'hsl(var(--foreground))',
                       }}
+                      itemStyle={{ color: 'hsl(var(--foreground))' }}
                       formatter={(value: number) => formatCurrency(value)}
                     />
                     <Area
@@ -491,7 +517,9 @@ const Dashboard = () => {
                         backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '8px',
+                        color: 'hsl(var(--foreground))',
                       }}
+                      itemStyle={{ color: 'hsl(var(--foreground))' }}
                       formatter={(value: number) => formatCurrency(value)}
                     />
                   </PieChart>

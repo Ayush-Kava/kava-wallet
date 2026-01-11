@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { z } from 'zod';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { CreateCategoryDialog } from '@/components/CreateCategoryDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +62,7 @@ const Transactions = () => {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [createCategoryOpen, setCreateCategoryOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
@@ -96,6 +98,14 @@ const Transactions = () => {
     setDescription('');
     setDate(format(new Date(), 'yyyy-MM-dd'));
     setFormErrors({});
+  };
+
+  const handleCategoryChange = (value: string) => {
+    if (value === 'create_new') {
+      setCreateCategoryOpen(true);
+    } else {
+      setCategoryId(value);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -208,7 +218,7 @@ const Transactions = () => {
 
                 <div className="space-y-2">
                   <Label>Category</Label>
-                  <Select value={categoryId} onValueChange={setCategoryId}>
+                  <Select value={categoryId} onValueChange={handleCategoryChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select category">
                         {categoryId && categories.find(c => c.id === categoryId) && (
@@ -223,6 +233,12 @@ const Transactions = () => {
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="create_new" className="font-medium text-primary cursor-pointer hover:bg-primary/10">
+                        <div className="flex items-center gap-2">
+                          <Plus size={14} />
+                          Create New Category
+                        </div>
+                      </SelectItem>
                       {categories.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>
                           <div className="flex items-center gap-2">
@@ -277,6 +293,13 @@ const Transactions = () => {
               </form>
             </DialogContent>
           </Dialog>
+
+          <CreateCategoryDialog 
+            open={createCategoryOpen} 
+            onOpenChange={setCreateCategoryOpen}
+            type={type}
+            onCategoryCreated={(id) => setCategoryId(id)}
+          />
         </div>
 
         {/* Filters */}
