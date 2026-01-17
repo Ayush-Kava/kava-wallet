@@ -1,7 +1,7 @@
-'use client';
+﻿'use client';
 
-import { ProtectedRoute } from '@/components/ProtectedRoute';
-import TransactionsPage from '@/page-components/Transactions';
+import { ProtectedRoute } from '@/components/molecules/common/ProtectedRoute';
+import TransactionsPage from '@/components/organisms/modules/transactions/TransactionsPage';
 
 export default function Transactions() {
   return (

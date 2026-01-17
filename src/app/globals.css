@@ -157,6 +157,23 @@
     font-family: 'Plus Jakarta Sans', sans-serif;
   }
 
+  /* Slightly smaller base sizing on desktops so 100% zoom matches the desired scale */
+  :root {
+    font-size: 15px;
+  }
+
+  @media (min-width: 1200px) {
+    :root {
+      font-size: 14px;
+    }
+  }
+
+  @media (min-width: 1600px) {
+    :root {
+      font-size: 15px;
+    }
+  }
+
   h1,
   h2,
   h3,

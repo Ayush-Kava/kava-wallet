@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 
 export interface Account {
   id: string;
@@ -58,12 +58,19 @@ export const useAccounts = () => {
       toast({ title: 'Account created successfully!' });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error creating account', description: error.message, variant: 'destructive' });
+      toast({
+        title: 'Error creating account',
+        description: error.message,
+        variant: 'destructive',
+      });
     },
   });
 
   const updateAccount = useMutation({
-    mutationFn: async ({ id, ...data }: Partial<CreateAccountData> & { id: string }) => {
+    mutationFn: async ({
+      id,
+      ...data
+    }: Partial<CreateAccountData> & { id: string }) => {
       const { error } = await supabase
         .from('accounts')
         .update(data)
@@ -76,7 +83,11 @@ export const useAccounts = () => {
       toast({ title: 'Account updated!' });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error updating account', description: error.message, variant: 'destructive' });
+      toast({
+        title: 'Error updating account',
+        description: error.message,
+        variant: 'destructive',
+      });
     },
   });
 
@@ -94,11 +105,16 @@ export const useAccounts = () => {
       toast({ title: 'Account deleted!' });
     },
     onError: (error: Error) => {
-      toast({ title: 'Error deleting account', description: error.message, variant: 'destructive' });
+      toast({
+        title: 'Error deleting account',
+        description: error.message,
+        variant: 'destructive',
+      });
     },
   });
 
-  const totalBalance = accounts?.reduce((sum, acc) => sum + Number(acc.balance), 0) || 0;
+  const totalBalance =
+    accounts?.reduce((sum, acc) => sum + Number(acc.balance), 0) || 0;
 
   return {
     accounts: accounts || [],

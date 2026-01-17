@@ -1,17 +1,17 @@
-import { useState } from 'react';
+'use client';
+
+import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/contexts/AuthContext';
-import Logo from '@/components/Logo';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import Logo from '@/components/branding/Logo';
+import { PageHeaderWithAction } from '@/components/molecules/common/PageHeaderWithAction';
+import { Avatar, AvatarFallback } from '@/components/atoms/ui/avatar';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  DropdownButton,
+  type DropdownButtonItem,
+} from '@/components/atoms/DropdownButton';
 import {
   LayoutDashboard,
   ArrowUpDown,
@@ -19,6 +19,11 @@ import {
   PieChart,
   Target,
   Settings,
+  CreditCard,
+  Landmark,
+  LineChart,
+  Users,
+  FileText,
   LogOut,
   Menu,
   X,
@@ -31,23 +36,36 @@ import {
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
+  title: string;
+  description?: string;
+  actions?: ReactNode;
 }
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: ArrowUpDown, label: 'Transactions', path: '/transactions' },
   { icon: Wallet, label: 'Accounts', path: '/accounts' },
-  { icon: PieChart, label: 'Analytics', path: '/analytics' },
+  { icon: CreditCard, label: 'Credit Cards', path: '/credit-cards' },
+  { icon: Landmark, label: 'Loans & EMIs', path: '/loans' },
+  { icon: LineChart, label: 'Investments', path: '/investments' },
   { icon: Target, label: 'Budgets', path: '/budgets' },
+  { icon: Users, label: 'People', path: '/people' },
+  { icon: FileText, label: 'Documents', path: '/documents' },
+  { icon: PieChart, label: 'Analytics', path: '/analytics' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 
-const DashboardLayout = ({ children }: DashboardLayoutProps) => {
+const DashboardLayout = ({
+  children,
+  title,
+  description,
+  actions,
+}: DashboardLayoutProps) => {
   const pathname = usePathname();
   const router = useRouter();
   const { user, signOut } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { setTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleSignOut = async () => {
@@ -95,7 +113,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {navItems.map((item) => {
-              const isActive = pathname === item.path;
+              const isActive =
+                pathname === item.path || pathname.startsWith(`${item.path}/`);
               return (
                 <Link
                   key={item.path}
@@ -109,9 +128,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                 >
                   <item.icon size={20} />
                   <span>{item.label}</span>
-                  {isActive && (
-                    <ChevronRight size={16} className="ml-auto" />
-                  )}
+                  {isActive && <ChevronRight size={16} className="ml-auto" />}
                 </Link>
               );
             })}
@@ -133,37 +150,49 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                   {user?.email}
                 </p>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              <DropdownButton
+                trigger={
                   <button className="p-2 rounded-lg hover:bg-muted transition-colors flex-shrink-0">
                     <MoreVertical size={18} className="text-muted-foreground" />
                   </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => router.push('/settings')}>
-                    <User size={16} className="mr-2" />
-                    Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setTheme('light')} className={theme === 'light' ? 'bg-muted' : ''}>
-                    <Sun size={16} className="mr-2" />
-                    Light
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setTheme('dark')} className={theme === 'dark' ? 'bg-muted' : ''}>
-                    <Moon size={16} className="mr-2" />
-                    Dark
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setTheme('system')} className={theme === 'system' ? 'bg-muted' : ''}>
-                    <Monitor size={16} className="mr-2" />
-                    System
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
-                    <LogOut size={16} className="mr-2" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                }
+                items={
+                  [
+                    {
+                      id: 'profile',
+                      label: 'Profile',
+                      onClick: () => router.push('/settings'),
+                      icon: <User size={16} />,
+                    },
+                    {
+                      id: 'theme-light',
+                      label: 'Light',
+                      onClick: () => setTheme('light'),
+                      icon: <Sun size={16} />,
+                    },
+                    {
+                      id: 'theme-dark',
+                      label: 'Dark',
+                      onClick: () => setTheme('dark'),
+                      icon: <Moon size={16} />,
+                    },
+                    {
+                      id: 'theme-system',
+                      label: 'System',
+                      onClick: () => setTheme('system'),
+                      icon: <Monitor size={16} />,
+                    },
+                    {
+                      id: 'sign-out',
+                      label: 'Sign Out',
+                      onClick: handleSignOut,
+                      variant: 'destructive',
+                      icon: <LogOut size={16} />,
+                    },
+                  ] as DropdownButtonItem[]
+                }
+                align="end"
+              />
             </div>
           </div>
         </div>
@@ -178,8 +207,20 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       )}
 
       {/* Main Content */}
-      <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen">
-        <div className="p-4 lg:p-8">{children}</div>
+      <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen flex flex-col">
+        <div className="sticky top-16 lg:top-0 z-30 bg-card border-b border-border shadow-sm">
+          <div className="px-3 sm:px-4 lg:px-5 xl:px-6 py-3">
+            <PageHeaderWithAction
+              title={title}
+              description={description}
+              customActionButton={actions ?? undefined}
+              className="items-center"
+            />
+          </div>
+        </div>
+        <div className="flex-1 px-3 sm:px-4 lg:px-5 xl:px-6 py-4">
+          <div className="mx-auto max-w-[1400px] space-y-6">{children}</div>
+        </div>
       </main>
     </div>
   );

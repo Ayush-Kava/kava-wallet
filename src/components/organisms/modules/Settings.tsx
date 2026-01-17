@@ -1,25 +1,32 @@
 'use client';
 
 import { useState } from 'react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import DashboardLayout from '@/components/organisms/layout/DashboardLayout';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/useToast';
 import { User, Mail, Shield, Loader2, Download, FileText } from 'lucide-react';
 import { useTransactions } from '@/hooks/useTransactions';
 import { format } from 'date-fns';
-
 const Settings = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const { transactions } = useTransactions();
   const [isUpdating, setIsUpdating] = useState(false);
-  const [fullName, setFullName] = useState(user?.user_metadata?.full_name || '');
+  const [fullName, setFullName] = useState(
+    user?.user_metadata?.full_name || '',
+  );
 
   const getInitials = () => {
     if (fullName) {
@@ -37,16 +44,21 @@ const Settings = () => {
     setIsUpdating(true);
     try {
       const { error } = await supabase.auth.updateUser({
-        data: { full_name: fullName }
+        data: { full_name: fullName },
       });
 
       if (error) throw error;
 
       toast({ title: 'Profile updated successfully!' });
     } catch (error: any) {
-      toast({ title: 'Error updating profile', description: error.message, variant: 'destructive' });
+      toast({
+        title: 'Error updating profile',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdating(false);
     }
-    setIsUpdating(false);
   };
 
   const handleExportCSV = () => {
@@ -55,7 +67,14 @@ const Settings = () => {
       return;
     }
 
-    const headers = ['Date', 'Type', 'Category', 'Account', 'Description', 'Amount'];
+    const headers = [
+      'Date',
+      'Type',
+      'Category',
+      'Account',
+      'Description',
+      'Amount',
+    ];
     const rows = transactions.map((t) => [
       format(new Date(t.date), 'yyyy-MM-dd'),
       t.type,
@@ -72,21 +91,21 @@ const Settings = () => {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `kavaflow-transactions-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    link.download = `kavaflow-transactions-${format(
+      new Date(),
+      'yyyy-MM-dd',
+    )}.csv`;
     link.click();
 
     toast({ title: 'Transactions exported successfully!' });
   };
 
   return (
-    <DashboardLayout>
+    <DashboardLayout
+      title="Settings"
+      description="Manage your account and preferences"
+    >
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-display font-bold">Settings</h1>
-          <p className="text-muted-foreground">Manage your account and preferences</p>
-        </div>
-
         {/* Profile Card */}
         <Card className="shadow-card border-0">
           <CardHeader>
@@ -103,7 +122,9 @@ const Settings = () => {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-semibold text-lg">{fullName || 'Your Name'}</p>
+                <p className="font-semibold text-lg">
+                  {fullName || 'Your Name'}
+                </p>
                 <p className="text-muted-foreground">{user?.email}</p>
               </div>
             </div>
@@ -127,11 +148,17 @@ const Settings = () => {
                   disabled
                   className="bg-muted"
                 />
-                <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+                <p className="text-xs text-muted-foreground">
+                  Email cannot be changed
+                </p>
               </div>
 
               <Button onClick={handleUpdateProfile} disabled={isUpdating}>
-                {isUpdating ? <Loader2 className="animate-spin" /> : 'Save Changes'}
+                {isUpdating ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  'Save Changes'
+                )}
               </Button>
             </div>
           </CardContent>
@@ -152,7 +179,8 @@ const Settings = () => {
               </Button>
             </div>
             <p className="text-sm text-muted-foreground mt-4">
-              Export all your transactions for backup or analysis in spreadsheet applications.
+              Export all your transactions for backup or analysis in spreadsheet
+              applications.
             </p>
           </CardContent>
         </Card>

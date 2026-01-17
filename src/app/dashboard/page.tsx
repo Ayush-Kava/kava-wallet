@@ -1,7 +1,7 @@
-'use client';
+﻿'use client';
 
-import { ProtectedRoute } from '@/components/ProtectedRoute';
-import DashboardPage from '@/page-components/Dashboard';
+import { ProtectedRoute } from '@/components/molecules/common/ProtectedRoute';
+import DashboardPage from '@/components/organisms/modules/Dashboard';
 
 export default function Dashboard() {
   return (
