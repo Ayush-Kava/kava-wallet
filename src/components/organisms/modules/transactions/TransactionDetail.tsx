@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -526,6 +527,9 @@ export default function TransactionDetail({
         <DialogContent className="sm:max-w-[540px]">
           <DialogHeader>
             <DialogTitle className="font-display">Edit Transaction</DialogTitle>
+            <DialogDescription>
+              Update the transaction details below.
+            </DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleEditSubmit}>
             {!isTransfer && (
@@ -659,16 +663,16 @@ export default function TransactionDetail({
                 <div className="space-y-2">
                   <Label>Category</Label>
                   <Select
-                    value={formState.categoryId}
+                    value={formState.categoryId || "__none__"}
                     onValueChange={(value) =>
-                      setFormState((prev) => ({ ...prev, categoryId: value }))
+                      setFormState((prev) => ({ ...prev, categoryId: value === "__none__" ? "" : value }))
                     }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No category</SelectItem>
+                      <SelectItem value="__none__">No category</SelectItem>
                       {activeCategories.map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>
                           <div className="flex items-center gap-2">
