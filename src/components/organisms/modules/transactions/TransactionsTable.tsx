@@ -1,6 +1,7 @@
 'use client';
 
 import EmptyState from './EmptyState';
+import Link from 'next/link';
 import {
   PaginatedTable,
   type Column,
@@ -55,36 +56,61 @@ export default function TransactionsTable({
   const columns: Column<Transaction>[] = [
     {
       header: 'Date',
-      accessor: (transaction) => formatDate(transaction.date),
+      accessor: (transaction) => (
+        <Link
+          href={`/transactions/${transaction.id}`}
+          className="hover:underline"
+        >
+          {formatDate(transaction.date)}
+        </Link>
+      ),
     },
     {
       header: 'Description',
       accessor: (transaction) => (
-        <div>
-          <div className="font-medium text-foreground">
-            {transaction.description || 'No description'}
+        <Link
+          href={`/transactions/${transaction.id}`}
+          className="hover:underline"
+        >
+          <div>
+            <div className="font-medium text-foreground">
+              {transaction.description || 'No description'}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {transaction.categories?.name || 'Uncategorized'}
+            </div>
           </div>
-          <div className="text-xs text-muted-foreground">
-            {transaction.categories?.name || 'Uncategorized'}
-          </div>
-        </div>
+        </Link>
       ),
     },
     {
       header: 'Account',
-      accessor: (transaction) =>
-        transaction.accounts?.name || 'Unknown Account',
+      accessor: (transaction) => (
+        <Link
+          href={`/transactions/${transaction.id}`}
+          className="hover:underline"
+        >
+          {transaction.accounts?.name || 'Unknown Account'}
+        </Link>
+      ),
     },
     {
       header: 'Amount',
       accessor: (transaction) => (
-        <span
-          className={
-            transaction.type === 'income' ? 'text-success' : 'text-destructive'
-          }
+        <Link
+          href={`/transactions/${transaction.id}`}
+          className="hover:underline"
         >
-          {formatAmount(transaction.amount, transaction.type)}
-        </span>
+          <span
+            className={
+              transaction.type === 'income'
+                ? 'text-success'
+                : 'text-destructive'
+            }
+          >
+            {formatAmount(transaction.amount, transaction.type)}
+          </span>
+        </Link>
       ),
       className: 'text-right',
     },

@@ -1,15 +1,12 @@
 ﻿'use client';
 
 import { ProtectedRoute } from '@/components/molecules/common/ProtectedRoute';
-import ComingSoon from '@/components/organisms/modules/ComingSoon';
+import InvestmentsPage from '@/components/organisms/modules/investments/InvestmentsPage';
 
 export default function Investments() {
   return (
     <ProtectedRoute>
-      <ComingSoon
-        title="Investments"
-        description="Monitor holdings, SIPs, and performance insights across all assets."
-      />
+      <InvestmentsPage />
     </ProtectedRoute>
   );
 }

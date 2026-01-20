@@ -9,14 +9,38 @@ export interface Transaction {
   date: string;
   created_at: string;
   updated_at: string;
+  transfer_id?: string | null;
   accounts?: { name: string; type: string };
   categories?: { name: string; icon: string; color: string };
+}
+
+export interface TransactionDetail {
+  transaction: Transaction;
+  linkedTransactions: Transaction[];
 }
 
 export interface CreateTransactionData {
   account_id: string;
   category_id?: string;
   type: 'income' | 'expense';
+  amount: number;
+  description?: string;
+  date: string;
+  transfer_id?: string | null;
+}
+
+export interface CreateTransferData {
+  from_account_id: string;
+  to_account_id: string;
+  amount: number;
+  description?: string;
+  date: string;
+}
+
+export interface UpdateTransferData {
+  transfer_id: string;
+  from_account_id: string;
+  to_account_id: string;
   amount: number;
   description?: string;
   date: string;

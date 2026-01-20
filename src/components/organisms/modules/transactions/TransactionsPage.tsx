@@ -7,7 +7,7 @@ import TransactionsTable from './TransactionsTable';
 import { useTransactions } from '@/hooks/useTransactions';
 import { Button } from '@/components/atoms/ui/button';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { ArrowLeftRight, Plus } from 'lucide-react';
 
 export default function TransactionsPage() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -54,12 +54,20 @@ export default function TransactionsPage() {
       title="Transactions"
       description="Track and manage your income and expenses"
       actions={
-        <Button asChild>
-          <Link href="/transactions/new">
-            <Plus size={18} />
-            Add Transaction
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/transactions/new?type=transfer">
+              <ArrowLeftRight size={18} />
+              Transfer
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/transactions/new">
+              <Plus size={18} />
+              Add Transaction
+            </Link>
+          </Button>
+        </div>
       }
     >
       <div className="space-y-6">

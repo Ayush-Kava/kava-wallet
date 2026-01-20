@@ -85,4 +85,14 @@ The project follows Atomic Design principles for component organization:
 - **Icons**: Reusable icon components
 - **Branding**: All components for landing page.
 
+### Modules Convention
+
+Feature-specific UI that combines organisms lives under `components/organisms/modules/<feature>/`.
+Follow these conventions:
+
+- **Per-feature folder**: Create a folder per feature (e.g., `account`, `transactions`).
+- **Composable parts**: Place feature-organized components (e.g., `AccountLedger.tsx`, `AccountLedgerFilters.tsx`, `AccountLedgerTable.tsx`) inside that folder.
+- **Cross-feature molecules**: Shared building blocks go under `components/molecules/`.
+- **Import style**: Feature pages import from `components/organisms/modules/<feature>/...` to keep boundaries clear.
+
 When creating new file, strictly follow above directory and file structure.

@@ -1,25 +1,20 @@
-import DashboardLayout from '@/components/organisms/layout/DashboardLayout';
 import { ProtectedRoute } from '@/components/molecules/common/ProtectedRoute';
-import ComingSoon from '@/components/organisms/modules/ComingSoon';
+import AccountLedger from '@/components/organisms/modules/account/AccountLedger';
 
-type AccountPageProps = {
-  params: Promise<{ id: string }>;
+type AccountDetailPageProps = {
+  params: Promise<{
+    id: string;
+  }>;
 };
 
-export default async function AccountDetail({ params }: AccountPageProps) {
+export default async function AccountDetailPage({
+  params,
+}: AccountDetailPageProps) {
   const { id } = await params;
 
   return (
     <ProtectedRoute>
-      <DashboardLayout
-        title="Account Details"
-        description={`Detailed view for account ${id} is coming soon.`}
-      >
-        <ComingSoon
-          title="Account Details"
-          description={`Detailed view for account ${id} is coming soon.`}
-        />
-      </DashboardLayout>
+      <AccountLedger accountId={id} />
     </ProtectedRoute>
   );
 }

@@ -1,57 +1,25 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/useToast';
-
-export interface Account {
-  id: string;
-  user_id: string;
-  name: string;
-  type: 'cash' | 'bank' | 'credit_card' | 'wallet';
-  balance: number;
-  currency: string;
-  color: string;
-  icon: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface CreateAccountData {
-  name: string;
-  type: 'cash' | 'bank' | 'credit_card' | 'wallet';
-  balance?: number;
-  currency?: string;
-  color?: string;
-  icon?: string;
-}
+import { accountsApi } from '@/services/api/accounts';
+import type { Account, CreateAccountData } from '@/types/account-types';
 
 export const useAccounts = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: accounts, isLoading } = useQuery({
+  const { data: accounts, isLoading } = useQuery<Account[]>({
     queryKey: ['accounts', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('accounts')
-        .select('*')
-        .eq('user_id', user!.id)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      return data as Account[];
+      return accountsApi.getAccounts(user!.id);
     },
     enabled: !!user,
   });
 
   const createAccount = useMutation({
     mutationFn: async (data: CreateAccountData) => {
-      const { error } = await supabase.from('accounts').insert({
-        ...data,
-        user_id: user!.id,
-      });
-      if (error) throw error;
+      await accountsApi.createAccount(user!.id, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
@@ -71,12 +39,7 @@ export const useAccounts = () => {
       id,
       ...data
     }: Partial<CreateAccountData> & { id: string }) => {
-      const { error } = await supabase
-        .from('accounts')
-        .update(data)
-        .eq('id', id)
-        .eq('user_id', user!.id);
-      if (error) throw error;
+      await accountsApi.updateAccount(user!.id, { id, ...data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
@@ -93,12 +56,7 @@ export const useAccounts = () => {
 
   const deleteAccount = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('accounts')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user!.id);
-      if (error) throw error;
+      await accountsApi.deleteAccount(user!.id, id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
@@ -125,3 +83,5 @@ export const useAccounts = () => {
     deleteAccount,
   };
 };
+
+export type { Account, CreateAccountData } from '@/types/account-types';

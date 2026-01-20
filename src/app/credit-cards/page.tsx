@@ -1,15 +1,12 @@
 ﻿'use client';
 
 import { ProtectedRoute } from '@/components/molecules/common/ProtectedRoute';
-import ComingSoon from '@/components/organisms/modules/ComingSoon';
+import CreditCards from '@/components/organisms/modules/credit-cards/CreditCards';
 
-export default function CreditCards() {
+export default function CreditCardsPage() {
   return (
     <ProtectedRoute>
-      <ComingSoon
-        title="Credit Cards"
-        description="Manage your cards, limits, rewards, and upcoming paymentsâ€”all in one place."
-      />
+      <CreditCards />
     </ProtectedRoute>
   );
 }
