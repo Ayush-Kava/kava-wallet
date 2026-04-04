@@ -77,8 +77,8 @@ const DashboardLayout = ({
   };
 
   const getInitials = () => {
-    if (user?.user_metadata?.full_name) {
-      return user.user_metadata.full_name
+    if (user?.full_name) {
+      return user.full_name
         .split(' ')
         .map((n: string) => n[0])
         .join('')
@@ -147,7 +147,7 @@ const DashboardLayout = ({
               </Avatar>
               <div className="flex-1 min-w-0 text-left">
                 <p className="text-sm font-semibold truncate text-foreground">
-                  {user?.user_metadata?.full_name || 'User'}
+                  {user?.full_name || 'User'}
                 </p>
                 <p className="text-xs text-muted-foreground truncate">
                   {user?.email}

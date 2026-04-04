@@ -23,10 +23,10 @@ export default function HomePage() {
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (user && !loading) {
-      router.push('/dashboard');
+    if (!loading && user) {
+      router.replace('/dashboard');
     }
-  }, [user, loading, router]);
+  }, [loading, user, router]);
 
   const features = [
     {

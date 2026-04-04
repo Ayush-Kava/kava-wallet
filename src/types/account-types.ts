@@ -31,3 +31,23 @@ export interface CreateAccountData {
   credit_limit?: number | null;
   min_due?: number | null;
 }
+
+export const toAccountType = (account: any): Account => ({
+  id: account.id,
+  user_id: account.userId,
+  name: account.name,
+  type: account.type,
+  balance: Number(account.balance),
+  currency: account.currency,
+  color: account.color,
+  icon: account.icon,
+  statement_start_date:
+    account.statement_start_date?.toISOString().split('T')[0] || null,
+  statement_end_date:
+    account.statement_end_date?.toISOString().split('T')[0] || null,
+  due_date: account.due_date?.toISOString().split('T')[0] || null,
+  credit_limit: account.credit_limit ? Number(account.credit_limit) : null,
+  min_due: account.min_due ? Number(account.min_due) : null,
+  created_at: account.createdAt.toISOString(),
+  updated_at: account.updatedAt.toISOString(),
+});

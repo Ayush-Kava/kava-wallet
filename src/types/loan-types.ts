@@ -1,6 +1,18 @@
-import type { Database } from '@/integrations/supabase/types';
-
-export type Loan = Database['public']['Tables']['loans']['Row'];
+export interface Loan {
+  id: string;
+  user_id: string;
+  name: string;
+  principal: number;
+  interest_rate: number;
+  tenure_months: number;
+  emi_amount: number;
+  start_date: string;
+  account_id: string;
+  category_id?: string | null;
+  outstanding_balance: number;
+  created_at: string;
+  updated_at: string;
+}
 
 export type RecurringFrequency = 'weekly' | 'monthly' | 'yearly';
 

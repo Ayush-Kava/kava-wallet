@@ -14,7 +14,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/useToast';
 import { User, Mail, Shield, Loader2, Download, FileText } from 'lucide-react';
 import { useTransactions } from '@/hooks/useTransactions';
@@ -24,9 +23,7 @@ const Settings = () => {
   const { toast } = useToast();
   const { transactions } = useTransactions();
   const [isUpdating, setIsUpdating] = useState(false);
-  const [fullName, setFullName] = useState(
-    user?.user_metadata?.full_name || '',
-  );
+  const [fullName, setFullName] = useState(user?.full_name || '');
 
   const getInitials = () => {
     if (fullName) {
@@ -43,11 +40,22 @@ const Settings = () => {
   const handleUpdateProfile = async () => {
     setIsUpdating(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        data: { full_name: fullName },
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ fullName }),
       });
 
-      if (error) throw error;
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || 'Failed to update profile');
+      }
+
+      const body = await res.json();
+      if (body.user) {
+        setFullName(body.user.full_name || '');
+      }
 
       toast({ title: 'Profile updated successfully!' });
     } catch (error: any) {

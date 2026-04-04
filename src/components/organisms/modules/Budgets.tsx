@@ -23,11 +23,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCategories } from '@/hooks/useCategories';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useToast } from '@/hooks/useToast';
+import { apiFetch } from '@/lib/api-client';
 import {
   Plus,
   Target,
@@ -73,14 +73,7 @@ const Budgets = () => {
   const { data: budgets, isLoading } = useQuery({
     queryKey: ['budgets', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('budgets')
-        .select('*, categories(name, color, icon)')
-        .eq('user_id', user!.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data as Budget[];
+      return apiFetch<Budget[]>(`/api/budgets`);
     },
     enabled: !!user,
   });
@@ -89,13 +82,11 @@ const Budgets = () => {
     mutationFn: async (data: z.infer<typeof budgetSchema>) => {
       const now = new Date();
       const startDate = startOfMonth(now);
-
-      const { error } = await supabase.from('budgets').insert({
+      await apiFetch<void>(`/api/budgets`, 'POST', {
         ...data,
         user_id: user!.id,
         start_date: format(startDate, 'yyyy-MM-dd'),
       });
-      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['budgets'] });
@@ -112,12 +103,9 @@ const Budgets = () => {
 
   const deleteBudget = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('budgets')
-        .delete()
-        .eq('id', id)
-        .eq('user_id', user!.id);
-      if (error) throw error;
+      await apiFetch<void>(`/api/budgets/${id}`, 'DELETE', {
+        user_id: user!.id,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['budgets'] });

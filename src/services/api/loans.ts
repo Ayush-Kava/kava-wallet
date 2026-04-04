@@ -1,4 +1,3 @@
-import { supabase } from '@/integrations/supabase/client';
 import { addMonths } from 'date-fns';
 import type {
   CreateLoanData,
@@ -7,6 +6,7 @@ import type {
   EMIScheduleItem,
 } from '@/types/loan-types';
 import { recurringRulesApi } from './recurring-rules';
+import { apiFetch } from '@/lib/api-client';
 
 const formatDateOnly = (date: Date): string => date.toISOString().slice(0, 10);
 
@@ -40,54 +40,23 @@ const calculateEMISchedule = (
 
 export const loansApi = {
   getLoans: async (userId: string): Promise<Loan[]> => {
-    const { data, error } = await supabase
-      .from('loans')
-      .select('*')
-      .eq('user_id', userId)
-      .order('start_date', { ascending: false });
-
-    if (error) throw error;
-    return (data || []) as Loan[];
+    return apiFetch<Loan[]>(`/api/loans?userId=${encodeURIComponent(userId)}`);
   },
 
   getLoan: async (userId: string, loanId: string): Promise<Loan> => {
-    const { data, error } = await supabase
-      .from('loans')
-      .select('*')
-      .eq('id', loanId)
-      .eq('user_id', userId)
-      .single();
-
-    if (error) throw error;
-    return data as Loan;
+    return apiFetch<Loan>(
+      `/api/loans/${loanId}?userId=${encodeURIComponent(userId)}`,
+    );
   },
 
   createLoan: async (
     userId: string,
     payload: CreateLoanData,
   ): Promise<Loan> => {
-    const outstandingBalance = payload.principal;
-
-    const { data, error } = await supabase
-      .from('loans')
-      .insert({
-        user_id: userId,
-        name: payload.name,
-        principal: payload.principal,
-        interest_rate: payload.interest_rate,
-        tenure_months: payload.tenure_months,
-        emi_amount: payload.emi_amount,
-        start_date: payload.start_date,
-        account_id: payload.account_id,
-        category_id: payload.category_id || null,
-        outstanding_balance: outstandingBalance,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    const loan = data as Loan;
+    const loan = await apiFetch<Loan>(`/api/loans`, 'POST', {
+      ...payload,
+      user_id: userId,
+    });
 
     // Auto-create recurring EMI rule
     const nextEmiDate = addMonths(new Date(payload.start_date), 1);
@@ -119,23 +88,16 @@ export const loansApi = {
     userId: string,
     { id, ...rest }: UpdateLoanData,
   ): Promise<void> => {
-    const { error } = await supabase
-      .from('loans')
-      .update(rest)
-      .eq('id', id)
-      .eq('user_id', userId);
-
-    if (error) throw error;
+    await apiFetch<void>(`/api/loans/${id}`, 'PUT', {
+      ...rest,
+      user_id: userId,
+    });
   },
 
   deleteLoan: async (userId: string, loanId: string): Promise<void> => {
-    const { error } = await supabase
-      .from('loans')
-      .delete()
-      .eq('id', loanId)
-      .eq('user_id', userId);
-
-    if (error) throw error;
+    await apiFetch<void>(`/api/loans/${loanId}`, 'DELETE', {
+      user_id: userId,
+    });
   },
 
   getEMISchedule: (loan: Loan): EMIScheduleItem[] => {
@@ -150,18 +112,9 @@ export const loansApi = {
     userId: string,
     loanId: string,
   ): Promise<number> => {
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('amount')
-      .eq('user_id', userId)
-      .eq('account_id', (await loansApi.getLoan(userId, loanId)).account_id)
-      .like('description', `EMI - %`)
-      .gte('created_at', (await loansApi.getLoan(userId, loanId)).start_date);
-
-    if (error) throw error;
-
-    const loan = await loansApi.getLoan(userId, loanId);
-    const totalPaid = (data || []).reduce((sum, tx) => sum + tx.amount, 0);
-    return Math.max(0, loan.principal - totalPaid);
+    const result = await apiFetch<{ outstanding: number }>(
+      `/api/loans/${loanId}/outstanding?userId=${encodeURIComponent(userId)}`,
+    );
+    return result.outstanding;
   },
 };

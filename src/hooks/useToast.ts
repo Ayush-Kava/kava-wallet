@@ -1,6 +1,34 @@
-import * as React from "react";
+import * as React from 'react';
 
-import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
+import type { ToastActionElement, ToastProps } from '@/components/ui/toast';
+
+type ToastIntent = 'success' | 'error' | 'info' | 'warning';
+
+const TOAST_COPY: Record<
+  ToastIntent,
+  { title: string; description: string; variant: ToastProps['variant'] }
+> = {
+  success: {
+    title: 'Success',
+    description: 'Your action completed successfully.',
+    variant: 'default',
+  },
+  error: {
+    title: 'Something went wrong',
+    description: 'Please try again or contact support if it persists.',
+    variant: 'destructive',
+  },
+  info: {
+    title: 'FYI',
+    description: "Here's the latest update.",
+    variant: 'default',
+  },
+  warning: {
+    title: 'Please check',
+    description: 'We need your attention before proceeding.',
+    variant: 'default',
+  },
+};
 
 const TOAST_LIMIT = 1;
 const TOAST_REMOVE_DELAY = 1000000;
@@ -10,13 +38,14 @@ type ToasterToast = ToastProps & {
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: ToastActionElement;
+  dataIntent?: ToastIntent;
 };
 
 const actionTypes = {
-  ADD_TOAST: "ADD_TOAST",
-  UPDATE_TOAST: "UPDATE_TOAST",
-  DISMISS_TOAST: "DISMISS_TOAST",
-  REMOVE_TOAST: "REMOVE_TOAST",
+  ADD_TOAST: 'ADD_TOAST',
+  UPDATE_TOAST: 'UPDATE_TOAST',
+  DISMISS_TOAST: 'DISMISS_TOAST',
+  REMOVE_TOAST: 'REMOVE_TOAST',
 } as const;
 
 let count = 0;
@@ -30,20 +59,20 @@ type ActionType = typeof actionTypes;
 
 type Action =
   | {
-      type: ActionType["ADD_TOAST"];
+      type: ActionType['ADD_TOAST'];
       toast: ToasterToast;
     }
   | {
-      type: ActionType["UPDATE_TOAST"];
+      type: ActionType['UPDATE_TOAST'];
       toast: Partial<ToasterToast>;
     }
   | {
-      type: ActionType["DISMISS_TOAST"];
-      toastId?: ToasterToast["id"];
+      type: ActionType['DISMISS_TOAST'];
+      toastId?: ToasterToast['id'];
     }
   | {
-      type: ActionType["REMOVE_TOAST"];
-      toastId?: ToasterToast["id"];
+      type: ActionType['REMOVE_TOAST'];
+      toastId?: ToasterToast['id'];
     };
 
 interface State {
@@ -60,7 +89,7 @@ const addToRemoveQueue = (toastId: string) => {
   const timeout = setTimeout(() => {
     toastTimeouts.delete(toastId);
     dispatch({
-      type: "REMOVE_TOAST",
+      type: 'REMOVE_TOAST',
       toastId: toastId,
     });
   }, TOAST_REMOVE_DELAY);
@@ -70,19 +99,21 @@ const addToRemoveQueue = (toastId: string) => {
 
 export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
-    case "ADD_TOAST":
+    case 'ADD_TOAST':
       return {
         ...state,
         toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
       };
 
-    case "UPDATE_TOAST":
+    case 'UPDATE_TOAST':
       return {
         ...state,
-        toasts: state.toasts.map((t) => (t.id === action.toast.id ? { ...t, ...action.toast } : t)),
+        toasts: state.toasts.map((t) =>
+          t.id === action.toast.id ? { ...t, ...action.toast } : t,
+        ),
       };
 
-    case "DISMISS_TOAST": {
+    case 'DISMISS_TOAST': {
       const { toastId } = action;
 
       // ! Side effects ! - This could be extracted into a dismissToast() action,
@@ -107,7 +138,7 @@ export const reducer = (state: State, action: Action): State => {
         ),
       };
     }
-    case "REMOVE_TOAST":
+    case 'REMOVE_TOAST':
       if (action.toastId === undefined) {
         return {
           ...state,
@@ -132,20 +163,20 @@ function dispatch(action: Action) {
   });
 }
 
-type Toast = Omit<ToasterToast, "id">;
+type Toast = Omit<ToasterToast, 'id'>;
 
 function toast({ ...props }: Toast) {
   const id = genId();
 
   const update = (props: ToasterToast) =>
     dispatch({
-      type: "UPDATE_TOAST",
+      type: 'UPDATE_TOAST',
       toast: { ...props, id },
     });
-  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id });
+  const dismiss = () => dispatch({ type: 'DISMISS_TOAST', toastId: id });
 
   dispatch({
-    type: "ADD_TOAST",
+    type: 'ADD_TOAST',
     toast: {
       ...props,
       id,
@@ -161,6 +192,32 @@ function toast({ ...props }: Toast) {
     dismiss,
     update,
   };
+}
+
+type ShowToastOptions = {
+  intent?: ToastIntent;
+  title?: string;
+  description?: string;
+  action?: ToastActionElement;
+  duration?: number;
+};
+
+function showToast({
+  intent = 'info',
+  title,
+  description,
+  action,
+  duration,
+}: ShowToastOptions) {
+  const copy = TOAST_COPY[intent];
+  return toast({
+    title: title ?? copy.title,
+    description: description ?? copy.description,
+    action,
+    duration: duration ?? 5000,
+    variant: copy.variant,
+    dataIntent: intent,
+  });
 }
 
 function useToast() {
@@ -179,8 +236,9 @@ function useToast() {
   return {
     ...state,
     toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+    dismiss: (toastId?: string) => dispatch({ type: 'DISMISS_TOAST', toastId }),
   };
 }
 
-export { useToast, toast };
+export { useToast, toast, showToast, TOAST_COPY };
+export type { ToastIntent, ShowToastOptions };

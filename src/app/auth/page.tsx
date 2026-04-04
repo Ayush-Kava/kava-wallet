@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { useAuth } from '@/contexts/AuthContext';
@@ -61,23 +61,17 @@ export default function AuthPage() {
   const [signUpPassword, setSignUpPassword] = useState('');
   const [signUpConfirmPassword, setSignUpConfirmPassword] = useState('');
 
-  useEffect(() => {
-    if (user) {
-      router.push('/dashboard');
-    }
-  }, [user, router]);
-
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
 
-    const result = signInSchema.safeParse({
+    const parseResult = signInSchema.safeParse({
       email: signInEmail,
       password: signInPassword,
     });
-    if (!result.success) {
+    if (!parseResult.success) {
       const fieldErrors: Record<string, string> = {};
-      result.error.errors.forEach((err) => {
+      parseResult.error.errors.forEach((err) => {
         if (err.path[0]) fieldErrors[err.path[0] as string] = err.message;
       });
       setErrors(fieldErrors);
@@ -85,8 +79,12 @@ export default function AuthPage() {
     }
 
     setIsLoading(true);
-    await signIn(signInEmail, signInPassword);
+    const signInResult = await signIn(signInEmail, signInPassword);
     setIsLoading(false);
+
+    if (!signInResult.error) {
+      router.replace('/dashboard');
+    }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -122,6 +120,15 @@ export default function AuthPage() {
       setActiveTab('signin');
     }
   };
+
+  if (user && !authLoading) {
+    router.replace('/dashboard');
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (authLoading) {
     return (

@@ -57,3 +57,31 @@ export interface PaginatedTransactionsResult {
   totalCount: number;
   totalPages: number;
 }
+
+export const toTransactionType = (transaction: any): Transaction => ({
+  id: transaction.id,
+  user_id: transaction.userId,
+  account_id: transaction.accountId,
+  category_id: transaction.categoryId,
+  type: transaction.type,
+  amount: Number(transaction.amount),
+  description: transaction.description,
+  date: transaction.date.toISOString().split('T')[0],
+  created_at: transaction.createdAt.toISOString(),
+  updated_at: transaction.updatedAt.toISOString(),
+  transfer_id: transaction.transfer_id,
+});
+
+export const mapTransactionFilters = (filters?: TransactionFilters) => {
+  if (!filters) return {};
+  return {
+    type:
+      filters.type?.toLowerCase() === 'income'
+        ? 'income'
+        : filters.type?.toLowerCase() === 'expense'
+          ? 'expense'
+          : undefined,
+    accountId: filters.account,
+    categoryId: filters.category,
+  } as const;
+};
