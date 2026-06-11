@@ -1,14 +1,8 @@
-import type {
-  RecurringFrequency,
-  RecurringRule,
-} from '@/types/recurring-types';
+import type { RecurringFrequency, RecurringRule } from '@/types/recurring-types';
 
 const formatDateOnly = (date: Date): string => date.toISOString().slice(0, 10);
 
-export const computeNextRunDate = (
-  current: string,
-  frequency: RecurringFrequency,
-): string => {
+export const computeNextRunDate = (current: string, frequency: RecurringFrequency): string => {
   const date = new Date(current);
   if (Number.isNaN(date.getTime())) {
     return formatDateOnly(new Date());

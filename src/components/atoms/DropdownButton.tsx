@@ -50,17 +50,13 @@ export function DropdownButton({
             <DropdownMenuItem
               onClick={item.onClick}
               className={
-                item.variant === 'destructive'
-                  ? 'text-destructive focus:bg-destructive/10'
-                  : ''
+                item.variant === 'destructive' ? 'text-destructive focus:bg-destructive/10' : ''
               }
             >
               {item.icon && <span className="mr-2">{item.icon}</span>}
               {item.label}
             </DropdownMenuItem>
-            {showSeparator && index < items.length - 1 && (
-              <DropdownMenuSeparator />
-            )}
+            {showSeparator && index < items.length - 1 && <DropdownMenuSeparator />}
           </div>
         ))}
       </DropdownMenuContent>

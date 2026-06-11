@@ -38,8 +38,7 @@ export const useDocuments = () => {
   });
 
   const createDocument = useMutation({
-    mutationFn: (payload: CreateDocumentData) =>
-      documentsApi.createDocument(userId, payload),
+    mutationFn: (payload: CreateDocumentData) => documentsApi.createDocument(userId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY_KEY });
       toast({ title: 'Document uploaded successfully' });
@@ -54,8 +53,7 @@ export const useDocuments = () => {
   });
 
   const updateDocument = useMutation({
-    mutationFn: (payload: UpdateDocumentData) =>
-      documentsApi.updateDocument(userId, payload),
+    mutationFn: (payload: UpdateDocumentData) => documentsApi.updateDocument(userId, payload),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY_KEY });
       queryClient.invalidateQueries({
@@ -73,8 +71,7 @@ export const useDocuments = () => {
   });
 
   const archiveDocument = useMutation({
-    mutationFn: (documentId: string) =>
-      documentsApi.archiveDocument(userId, documentId),
+    mutationFn: (documentId: string) => documentsApi.archiveDocument(userId, documentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY_KEY });
       toast({ title: 'Document archived' });
@@ -89,8 +86,7 @@ export const useDocuments = () => {
   });
 
   const deleteDocument = useMutation({
-    mutationFn: (documentId: string) =>
-      documentsApi.deleteDocument(userId, documentId),
+    mutationFn: (documentId: string) => documentsApi.deleteDocument(userId, documentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY_KEY });
       toast({ title: 'Document deleted' });
@@ -105,8 +101,7 @@ export const useDocuments = () => {
   });
 
   const addDocumentLink = useMutation({
-    mutationFn: (payload: CreateDocumentLinkData) =>
-      documentsApi.addDocumentLink(userId, payload),
+    mutationFn: (payload: CreateDocumentLinkData) => documentsApi.addDocumentLink(userId, payload),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: [...DOCUMENTS_QUERY_KEY, variables.document_id],
@@ -123,15 +118,9 @@ export const useDocuments = () => {
   });
 
   const removeDocumentLink = useMutation({
-    mutationFn: ({
-      linkId,
-      documentId,
-    }: {
-      linkId: string;
-      documentId: string;
-    }) =>
+    mutationFn: ({ linkId, documentId }: { linkId: string; documentId: string }) =>
       documentsApi.removeDocumentLink(userId, linkId).then(() => documentId),
-    onSuccess: (documentId) => {
+    onSuccess: documentId => {
       queryClient.invalidateQueries({
         queryKey: [...DOCUMENTS_QUERY_KEY, documentId],
       });
@@ -186,8 +175,7 @@ export const useDocuments = () => {
   });
 
   const deleteReminder = useMutation({
-    mutationFn: (reminderId: string) =>
-      documentsApi.deleteReminder(userId, reminderId),
+    mutationFn: (reminderId: string) => documentsApi.deleteReminder(userId, reminderId),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['document-reminders', 'upcoming'],

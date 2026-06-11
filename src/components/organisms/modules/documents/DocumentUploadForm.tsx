@@ -95,7 +95,7 @@ export function DocumentUploadForm({
         ...values,
         file_url: fileUrl,
         file_size: file.size,
-        tags: values.tags ? values.tags.split(',').map((t) => t.trim()) : [],
+        tags: values.tags ? values.tags.split(',').map(t => t.trim()) : [],
       });
 
       form.reset();
@@ -117,16 +117,11 @@ export function DocumentUploadForm({
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle>Upload Document</DialogTitle>
-          <DialogDescription>
-            Add a new document to your vault
-          </DialogDescription>
+          <DialogDescription>Add a new document to your vault</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-4"
-          >
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="file_type"
@@ -143,8 +138,7 @@ export function DocumentUploadForm({
                   </FormControl>
                   {file && (
                     <FormDescription>
-                      Selected: {file.name} (
-                      {(file.size / 1024 / 1024).toFixed(2)} MB)
+                      Selected: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
                     </FormDescription>
                   )}
                   <FormMessage />
@@ -267,11 +261,7 @@ export function DocumentUploadForm({
                 Cancel
               </Button>
               <Button type="submit" disabled={uploading || isSubmitting}>
-                {uploading
-                  ? 'Uploading...'
-                  : isSubmitting
-                    ? 'Saving...'
-                    : 'Upload Document'}
+                {uploading ? 'Uploading...' : isSubmitting ? 'Saving...' : 'Upload Document'}
               </Button>
             </div>
           </form>

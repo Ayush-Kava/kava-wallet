@@ -11,11 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/atoms/ui/table';
-import {
-  calculateLedgerEntries,
-  formatCurrency,
-  formatDateStr,
-} from '@/lib/ledger-utils';
+import { calculateLedgerEntries, formatCurrency, formatDateStr } from '@/lib/ledger-utils';
 import type { LedgerEntry } from '@/lib/ledger-utils';
 import type { Transaction } from '@/types/transaction-types';
 import { ArrowLeftRight } from 'lucide-react';
@@ -53,7 +49,7 @@ export default function AccountLedgerTable({
   const ledgerEntries = calculateLedgerEntries(transactions, openingBalance);
 
   const handleRowClick = (transaction: Transaction) => {
-    router.push(`/transactions/${transaction.id}`);
+    router.push(`/app/transactions/${transaction.id}`);
   };
 
   if (isLoading) {
@@ -90,21 +86,21 @@ export default function AccountLedgerTable({
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden">
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
       <Table>
         <TableHeader>
           <TableRow className="border-b border-border hover:bg-transparent">
             <TableHead className="w-24">Date</TableHead>
             <TableHead>Description</TableHead>
-            <TableHead className="text-right w-32">Debit</TableHead>
-            <TableHead className="text-right w-32">Credit</TableHead>
-            <TableHead className="text-right w-40">Running Balance</TableHead>
+            <TableHead className="w-32 text-right">Debit</TableHead>
+            <TableHead className="w-32 text-right">Credit</TableHead>
+            <TableHead className="w-40 text-right">Running Balance</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {/* Opening Balance Row */}
-          <TableRow className="bg-muted/50 hover:bg-muted/70 border-b border-border">
-            <TableCell colSpan={2} className="font-semibold text-sm">
+          <TableRow className="border-b border-border bg-muted/50 hover:bg-muted/70">
+            <TableCell colSpan={2} className="text-sm font-semibold">
               Opening Balance
             </TableCell>
             <TableCell className="text-right"></TableCell>
@@ -118,15 +114,13 @@ export default function AccountLedgerTable({
           {ledgerEntries.map((entry: LedgerEntry) => (
             <TableRow
               key={entry.transaction.id}
-              className="cursor-pointer hover:bg-muted/50 border-b border-border transition-colors"
+              className="cursor-pointer border-b border-border transition-colors hover:bg-muted/50"
               onClick={() => handleRowClick(entry.transaction)}
             >
-              <TableCell className="text-sm">
-                {formatDateStr(entry.transaction.date)}
-              </TableCell>
+              <TableCell className="text-sm">{formatDateStr(entry.transaction.date)}</TableCell>
               <TableCell>
                 <div>
-                  <p className="font-medium text-foreground text-sm">
+                  <p className="text-sm font-medium text-foreground">
                     {entry.transaction.description || 'No description'}
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -136,16 +130,15 @@ export default function AccountLedgerTable({
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-primary">
                       <ArrowLeftRight size={14} />
                       <span>
-                        Transfer{' '}
-                        {entry.transaction.type === 'expense' ? 'to' : 'from'}{' '}
-                        {transferPartners?.[entry.transaction.transfer_id]
-                          ?.accountName || 'linked account'}
+                        Transfer {entry.transaction.type === 'expense' ? 'to' : 'from'}{' '}
+                        {transferPartners?.[entry.transaction.transfer_id]?.accountName ||
+                          'linked account'}
                       </span>
                       {transferPartners?.[entry.transaction.transfer_id] && (
                         <Link
-                          href={`/accounts/${transferPartners[entry.transaction.transfer_id].accountId}`}
+                          href={`/app/accounts/${transferPartners[entry.transaction.transfer_id].accountId}`}
                           className="font-medium underline-offset-4 hover:underline"
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={e => e.stopPropagation()}
                         >
                           View account
                         </Link>
@@ -156,7 +149,7 @@ export default function AccountLedgerTable({
               </TableCell>
               <TableCell className="text-right text-sm">
                 {entry.debit > 0 ? (
-                  <span className="text-destructive font-medium">
+                  <span className="font-medium text-destructive">
                     {formatCurrency(entry.debit, currency)}
                   </span>
                 ) : (
@@ -165,7 +158,7 @@ export default function AccountLedgerTable({
               </TableCell>
               <TableCell className="text-right text-sm">
                 {entry.credit > 0 ? (
-                  <span className="text-success font-medium">
+                  <span className="font-medium text-success">
                     {formatCurrency(entry.credit, currency)}
                   </span>
                 ) : (
@@ -174,10 +167,8 @@ export default function AccountLedgerTable({
               </TableCell>
               <TableCell
                 className={cn(
-                  'text-right font-semibold text-sm',
-                  entry.runningBalance < 0
-                    ? 'text-destructive'
-                    : 'text-success',
+                  'text-right text-sm font-semibold',
+                  entry.runningBalance < 0 ? 'text-destructive' : 'text-success',
                 )}
               >
                 {formatCurrency(entry.runningBalance, currency)}

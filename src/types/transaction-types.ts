@@ -47,8 +47,9 @@ export interface UpdateTransferData {
 }
 
 export interface TransactionFilters {
-  account?: string;
-  category?: string;
+  accountId?: string;
+  categoryId?: string;
+  search?: string;
   type?: 'Income & Expense' | 'Income' | 'Expense';
 }
 
@@ -81,7 +82,7 @@ export const mapTransactionFilters = (filters?: TransactionFilters) => {
         : filters.type?.toLowerCase() === 'expense'
           ? 'expense'
           : undefined,
-    accountId: filters.account,
-    categoryId: filters.category,
+    accountId: filters.accountId,
+    categoryId: filters.categoryId,
   } as const;
 };

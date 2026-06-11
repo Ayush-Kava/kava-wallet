@@ -12,10 +12,7 @@ export const listByUser = async (userId: string): Promise<Account[]> => {
   return accounts.map(toAccountType);
 };
 
-export const getById = async (
-  userId: string,
-  id: string,
-): Promise<Account | null> => {
+export const getById = async (userId: string, id: string): Promise<Account | null> => {
   const account = await prisma.account.findFirst({ where: { id, userId } });
   return account ? toAccountType(account) : null;
 };
@@ -37,12 +34,8 @@ export const create = async (
       currency: data.currency ?? 'INR',
       color: data.color ?? '#10B981',
       icon: data.icon ?? 'wallet',
-      statement_start_date: data.statement_start_date
-        ? new Date(data.statement_start_date)
-        : null,
-      statement_end_date: data.statement_end_date
-        ? new Date(data.statement_end_date)
-        : null,
+      statement_start_date: data.statement_start_date ? new Date(data.statement_start_date) : null,
+      statement_end_date: data.statement_end_date ? new Date(data.statement_end_date) : null,
       due_date: data.due_date ? new Date(data.due_date) : null,
       credit_limit: data.credit_limit,
       min_due: data.min_due,
@@ -81,11 +74,7 @@ export const update = async (
             ? new Date(data.statement_end_date)
             : null,
       due_date:
-        data.due_date === undefined
-          ? undefined
-          : data.due_date
-            ? new Date(data.due_date)
-            : null,
+        data.due_date === undefined ? undefined : data.due_date ? new Date(data.due_date) : null,
       credit_limit: data.credit_limit,
       min_due: data.min_due,
     },

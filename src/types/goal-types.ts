@@ -85,3 +85,40 @@ export const GOAL_PRIORITY_COLORS: Record<GoalPriority, string> = {
   medium: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   high: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
 };
+
+const mapGoalStatusFromDb = (status: string): GoalStatus => {
+  if (status === 'cancelled') return 'paused';
+  return status as GoalStatus;
+};
+
+const mapGoalStatusToDb = (status?: GoalStatus): string | undefined => {
+  if (!status) return undefined;
+  if (status === 'paused') return 'cancelled';
+  return status;
+};
+
+export const toGoalType = (goal: any): Goal => ({
+  id: goal.id,
+  user_id: goal.userId,
+  name: goal.name,
+  target_amount: Number(goal.target_amount),
+  target_date: goal.target_date?.toISOString().split('T')[0],
+  priority: goal.priority,
+  notes: goal.notes,
+  status: mapGoalStatusFromDb(goal.status),
+  created_at: goal.createdAt.toISOString(),
+  updated_at: goal.updatedAt.toISOString(),
+});
+
+export const toGoalFundingType = (funding: any): GoalFunding => ({
+  id: funding.id,
+  goal_id: funding.goalId,
+  user_id: funding.userId,
+  source_type: funding.source_type,
+  source_id: funding.source_id,
+  allocated_amount: Number(funding.allocated_amount),
+  created_at: funding.createdAt.toISOString(),
+  updated_at: funding.updatedAt.toISOString(),
+});
+
+export { mapGoalStatusToDb };

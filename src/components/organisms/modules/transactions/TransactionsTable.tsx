@@ -2,10 +2,7 @@
 
 import EmptyState from './EmptyState';
 import Link from 'next/link';
-import {
-  PaginatedTable,
-  type Column,
-} from '@/components/molecules/common/DataTable';
+import { PaginatedTable, type Column } from '@/components/molecules/common/DataTable';
 import type { Transaction } from '@/types/transaction-types';
 
 type TransactionsTableProps = {
@@ -46,32 +43,26 @@ export default function TransactionsTable({
 }: TransactionsTableProps) {
   // Calculate totals
   const totalExpenses = transactions
-    .filter((t) => t.type === 'expense')
+    .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
 
   const totalIncome = transactions
-    .filter((t) => t.type === 'income')
+    .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
 
   const columns: Column<Transaction>[] = [
     {
       header: 'Date',
-      accessor: (transaction) => (
-        <Link
-          href={`/transactions/${transaction.id}`}
-          className="hover:underline"
-        >
+      accessor: transaction => (
+        <Link href={`/app/transactions/${transaction.id}`} className="hover:underline">
           {formatDate(transaction.date)}
         </Link>
       ),
     },
     {
       header: 'Description',
-      accessor: (transaction) => (
-        <Link
-          href={`/transactions/${transaction.id}`}
-          className="hover:underline"
-        >
+      accessor: transaction => (
+        <Link href={`/app/transactions/${transaction.id}`} className="hover:underline">
           <div>
             <div className="font-medium text-foreground">
               {transaction.description || 'No description'}
@@ -85,29 +76,17 @@ export default function TransactionsTable({
     },
     {
       header: 'Account',
-      accessor: (transaction) => (
-        <Link
-          href={`/transactions/${transaction.id}`}
-          className="hover:underline"
-        >
+      accessor: transaction => (
+        <Link href={`/app/transactions/${transaction.id}`} className="hover:underline">
           {transaction.accounts?.name || 'Unknown Account'}
         </Link>
       ),
     },
     {
       header: 'Amount',
-      accessor: (transaction) => (
-        <Link
-          href={`/transactions/${transaction.id}`}
-          className="hover:underline"
-        >
-          <span
-            className={
-              transaction.type === 'income'
-                ? 'text-success'
-                : 'text-destructive'
-            }
-          >
+      accessor: transaction => (
+        <Link href={`/app/transactions/${transaction.id}`} className="hover:underline">
+          <span className={transaction.type === 'income' ? 'text-success' : 'text-destructive'}>
             {formatAmount(transaction.amount, transaction.type)}
           </span>
         </Link>
@@ -118,7 +97,7 @@ export default function TransactionsTable({
 
   if (!transactions.length && !isLoading) {
     return (
-      <div className="bg-card shadow-card border-0 rounded-xl">
+      <div className="rounded-xl border-0 bg-card shadow-card">
         <EmptyState />
       </div>
     );
@@ -139,9 +118,7 @@ export default function TransactionsTable({
       footerContent={() => (
         <div className="flex items-center gap-4 text-sm font-medium">
           <div className="flex items-center gap-2">
-            <span className="text-destructive">
-              -₹{totalExpenses.toFixed(2)}
-            </span>
+            <span className="text-destructive">-₹{totalExpenses.toFixed(2)}</span>
           </div>
           <span className="text-muted-foreground">+</span>
           <div className="flex items-center gap-2">

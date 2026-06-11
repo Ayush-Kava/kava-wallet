@@ -32,12 +32,7 @@ export default function AccountLedgerFilters({
       <DateRangeCalendar onDateRangeChange={handleDateRangeChange} />
 
       {hasActiveFilters && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onReset}
-          className="h-10 w-10 p-0"
-        >
+        <Button variant="ghost" size="sm" onClick={onReset} className="h-10 w-10 p-0">
           <X className="h-4 w-4" />
         </Button>
       )}

@@ -24,15 +24,14 @@ const formatDate = (value: string) => {
 };
 
 export default function TransactionRow({ transaction }: TransactionRowProps) {
-  const amountClasses =
-    transaction.type === 'income' ? 'text-success' : 'text-destructive';
+  const amountClasses = transaction.type === 'income' ? 'text-success' : 'text-destructive';
 
   const accountName = transaction.accounts?.name || 'Unknown Account';
   const categoryName = transaction.categories?.name || 'Uncategorized';
 
   return (
-    <tr className="border-b border-border hover:bg-muted transition-colors cursor-pointer">
-      <td className="p-4 whitespace-nowrap">{formatDate(transaction.date)}</td>
+    <tr className="cursor-pointer border-b border-border transition-colors hover:bg-muted">
+      <td className="whitespace-nowrap p-4">{formatDate(transaction.date)}</td>
       <td className="p-4">
         <div className="font-medium text-foreground">
           {transaction.description || 'No description'}

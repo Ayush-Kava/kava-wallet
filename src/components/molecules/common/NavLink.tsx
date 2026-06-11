@@ -17,12 +17,7 @@ const NavLink = forwardRef<HTMLAnchorElement, NavLinkProps>(
     const isActive = pathname === href || pathname?.startsWith(href + '/');
 
     return (
-      <Link
-        ref={ref}
-        href={href}
-        className={cn(className, isActive && activeClassName)}
-        {...props}
-      >
+      <Link ref={ref} href={href} className={cn(className, isActive && activeClassName)} {...props}>
         {children}
       </Link>
     );

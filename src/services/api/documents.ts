@@ -14,44 +14,30 @@ import { apiFetch } from '@/lib/api-client';
 export const documentsApi = {
   // Documents
   getDocuments: async (userId: string): Promise<Document[]> => {
-    return apiFetch<Document[]>(
-      `/api/documents?userId=${encodeURIComponent(userId)}`,
-    );
+    return apiFetch<Document[]>(`/api/documents?userId=${encodeURIComponent(userId)}`);
   },
 
-  getDocument: async (
-    userId: string,
-    documentId: string,
-  ): Promise<DocumentWithLinks> => {
+  getDocument: async (userId: string, documentId: string): Promise<DocumentWithLinks> => {
     return apiFetch<DocumentWithLinks>(
       `/api/documents/${documentId}?userId=${encodeURIComponent(userId)}`,
     );
   },
 
-  createDocument: async (
-    userId: string,
-    payload: CreateDocumentData,
-  ): Promise<Document> => {
+  createDocument: async (userId: string, payload: CreateDocumentData): Promise<Document> => {
     return apiFetch<Document>(`/api/documents`, 'POST', {
       ...payload,
       user_id: userId,
     });
   },
 
-  updateDocument: async (
-    userId: string,
-    { id, ...rest }: UpdateDocumentData,
-  ): Promise<void> => {
+  updateDocument: async (userId: string, { id, ...rest }: UpdateDocumentData): Promise<void> => {
     await apiFetch<void>(`/api/documents/${id}`, 'PUT', {
       ...rest,
       user_id: userId,
     });
   },
 
-  archiveDocument: async (
-    userId: string,
-    documentId: string,
-  ): Promise<void> => {
+  archiveDocument: async (userId: string, documentId: string): Promise<void> => {
     await apiFetch<void>(`/api/documents/${documentId}/archive`, 'POST', {
       user_id: userId,
     });
@@ -68,14 +54,10 @@ export const documentsApi = {
     userId: string,
     payload: CreateDocumentLinkData,
   ): Promise<DocumentLink> => {
-    return apiFetch<DocumentLink>(
-      `/api/documents/${payload.document_id}/links`,
-      'POST',
-      {
-        ...payload,
-        user_id: userId,
-      },
-    );
+    return apiFetch<DocumentLink>(`/api/documents/${payload.document_id}/links`, 'POST', {
+      ...payload,
+      user_id: userId,
+    });
   },
 
   removeDocumentLink: async (userId: string, linkId: string): Promise<void> => {
@@ -89,14 +71,10 @@ export const documentsApi = {
     userId: string,
     payload: CreateDocumentReminderData,
   ): Promise<DocumentReminder> => {
-    return apiFetch<DocumentReminder>(
-      `/api/documents/${payload.document_id}/reminders`,
-      'POST',
-      {
-        ...payload,
-        user_id: userId,
-      },
-    );
+    return apiFetch<DocumentReminder>(`/api/documents/${payload.document_id}/reminders`, 'POST', {
+      ...payload,
+      user_id: userId,
+    });
   },
 
   updateReminder: async (

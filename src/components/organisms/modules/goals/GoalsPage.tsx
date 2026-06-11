@@ -9,26 +9,18 @@ import { GoalForm } from './GoalForm';
 import { GoalCard } from './GoalCard';
 import { useGoals } from '@/hooks/useGoals';
 import { Plus, Target } from 'lucide-react';
-import type {
-  CreateGoalData,
-  UpdateGoalData,
-  GoalPriority,
-} from '@/types/goal-types';
+import type { CreateGoalData, UpdateGoalData, GoalPriority } from '@/types/goal-types';
 import { GOAL_PRIORITY_LABELS } from '@/types/goal-types';
 
 const GOAL_PRIORITIES: GoalPriority[] = ['low', 'medium', 'high'];
 
 export default function GoalsPage() {
   const [formOpen, setFormOpen] = useState(false);
-  const [selectedPriority, setSelectedPriority] = useState<
-    GoalPriority | 'all'
-  >('all');
-  const { goals, isLoading, createGoal } = useGoals();
+  const [selectedPriority, setSelectedPriority] = useState<GoalPriority | 'all'>('all');
+  const { goals, isLoading, createGoal, isCreatingGoal } = useGoals();
 
   const filteredGoals =
-    selectedPriority === 'all'
-      ? goals
-      : goals.filter((goal) => goal.priority === selectedPriority);
+    selectedPriority === 'all' ? goals : goals.filter(goal => goal.priority === selectedPriority);
 
   const handleCreateGoal = async (data: CreateGoalData | UpdateGoalData) => {
     if ('id' in data) {
@@ -39,13 +31,13 @@ export default function GoalsPage() {
         priority: data.priority!,
         notes: data.notes,
       };
-      await createGoal.mutateAsync(createData);
+      await createGoal(createData);
     } else {
-      await createGoal.mutateAsync(data as CreateGoalData);
+      await createGoal(data as CreateGoalData);
     }
   };
 
-  const activeGoals = goals.filter((g) => g.status === 'active');
+  const activeGoals = goals.filter(g => g.status === 'active');
   const totalTarget = activeGoals.reduce((sum, g) => sum + g.target_amount, 0);
   const totalSaved = activeGoals.reduce((sum, g) => sum + g.total_saved, 0);
   const totalRemaining = totalTarget - totalSaved;
@@ -64,7 +56,7 @@ export default function GoalsPage() {
       <div className="space-y-6">
         {/* Summary Cards */}
         <div className="grid gap-4 md:grid-cols-4">
-          <Card className="shadow-card border-border/70">
+          <Card className="border-border/70 shadow-card">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Active Goals
@@ -75,20 +67,18 @@ export default function GoalsPage() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-card border-border/70">
+          <Card className="border-border/70 shadow-card">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Total Target
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">
-                ₹{totalTarget.toLocaleString('en-IN')}
-              </p>
+              <p className="text-2xl font-bold">₹{totalTarget.toLocaleString('en-IN')}</p>
             </CardContent>
           </Card>
 
-          <Card className="shadow-card border-border/70 bg-green-50 dark:bg-green-950">
+          <Card className="border-border/70 bg-green-50 shadow-card dark:bg-green-950">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Total Saved
@@ -101,11 +91,9 @@ export default function GoalsPage() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-card border-border/70">
+          <Card className="border-border/70 shadow-card">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Remaining
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Remaining</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">
@@ -116,7 +104,7 @@ export default function GoalsPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex flex-wrap gap-2">
           <Badge
             variant={selectedPriority === 'all' ? 'default' : 'outline'}
             className="cursor-pointer"
@@ -124,8 +112,8 @@ export default function GoalsPage() {
           >
             All Goals ({goals.length})
           </Badge>
-          {GOAL_PRIORITIES.map((priority) => {
-            const count = goals.filter((g) => g.priority === priority).length;
+          {GOAL_PRIORITIES.map(priority => {
+            const count = goals.filter(g => g.priority === priority).length;
             return (
               <Badge
                 key={priority}
@@ -142,27 +130,23 @@ export default function GoalsPage() {
         {/* Goals Grid */}
         {isLoading ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
+            {[1, 2, 3].map(i => (
               <Card key={i} className="h-64">
-                <CardContent className="h-full bg-muted animate-pulse" />
+                <CardContent className="h-full animate-pulse bg-muted" />
               </Card>
             ))}
           </div>
         ) : filteredGoals.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <Target className="h-12 w-12 text-muted-foreground mb-2" />
-              <p className="text-muted-foreground text-center">
+              <Target className="mb-2 h-12 w-12 text-muted-foreground" />
+              <p className="text-center text-muted-foreground">
                 {selectedPriority === 'all'
                   ? 'No goals yet. Start planning your financial future!'
                   : `No ${GOAL_PRIORITY_LABELS[selectedPriority].toLowerCase()} goals found.`}
               </p>
               {selectedPriority === 'all' && (
-                <Button
-                  onClick={() => setFormOpen(true)}
-                  className="mt-4"
-                  variant="default"
-                >
+                <Button onClick={() => setFormOpen(true)} className="mt-4" variant="default">
                   Create Your First Goal
                 </Button>
               )}
@@ -170,7 +154,7 @@ export default function GoalsPage() {
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredGoals.map((goal) => (
+            {filteredGoals.map(goal => (
               <GoalCard key={goal.id} goal={goal} />
             ))}
           </div>
@@ -181,7 +165,7 @@ export default function GoalsPage() {
         open={formOpen}
         onOpenChange={setFormOpen}
         onSubmit={handleCreateGoal}
-        isSubmitting={createGoal.isPending}
+        isSubmitting={isCreatingGoal}
       />
     </DashboardLayout>
   );

@@ -2,10 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/useToast';
 import { investmentsApi } from '@/services/api/investments';
-import type {
-  CreateInvestmentData,
-  UpdateInvestmentData,
-} from '@/types/investment-types';
+import type { CreateInvestmentData, UpdateInvestmentData } from '@/types/investment-types';
 
 const INVESTMENTS_QUERY_KEY = ['investments'];
 
@@ -28,9 +25,8 @@ export const useInvestments = () => {
       enabled: !!userId && !!investmentId,
     });
 
-  const createInvestment = useMutation({
-    mutationFn: (payload: CreateInvestmentData) =>
-      investmentsApi.createInvestment(userId, payload),
+  const createInvestmentMutation = useMutation({
+    mutationFn: (payload: CreateInvestmentData) => investmentsApi.createInvestment(userId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: INVESTMENTS_QUERY_KEY });
       toast({ title: 'Investment created successfully!' });
@@ -44,9 +40,8 @@ export const useInvestments = () => {
     },
   });
 
-  const updateInvestment = useMutation({
-    mutationFn: (payload: UpdateInvestmentData) =>
-      investmentsApi.updateInvestment(userId, payload),
+  const updateInvestmentMutation = useMutation({
+    mutationFn: (payload: UpdateInvestmentData) => investmentsApi.updateInvestment(userId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: INVESTMENTS_QUERY_KEY });
       toast({ title: 'Investment updated!' });
@@ -60,9 +55,8 @@ export const useInvestments = () => {
     },
   });
 
-  const deleteInvestment = useMutation({
-    mutationFn: (investmentId: string) =>
-      investmentsApi.deleteInvestment(userId, investmentId),
+  const deleteInvestmentMutation = useMutation({
+    mutationFn: (investmentId: string) => investmentsApi.deleteInvestment(userId, investmentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: INVESTMENTS_QUERY_KEY });
       toast({ title: 'Investment deleted!' });
@@ -89,17 +83,19 @@ export const useInvestments = () => {
   });
 
   return {
-    // Queries
     investments: getInvestments.data || [],
     isLoading: getInvestments.isLoading,
     useInvestment,
     totalInvested: getTotalInvested.data || 0,
     totalCurrentValue: getTotalCurrentValue.data || 0,
-
-    // Mutations
-    createInvestment,
-    updateInvestment,
-    deleteInvestment,
+    createInvestment: (payload: CreateInvestmentData) =>
+      createInvestmentMutation.mutateAsync(payload),
+    updateInvestment: (payload: UpdateInvestmentData) =>
+      updateInvestmentMutation.mutateAsync(payload),
+    deleteInvestment: (investmentId: string) => deleteInvestmentMutation.mutateAsync(investmentId),
+    isCreatingInvestment: createInvestmentMutation.isPending,
+    isUpdatingInvestment: updateInvestmentMutation.isPending,
+    isDeletingInvestment: deleteInvestmentMutation.isPending,
   };
 };
 

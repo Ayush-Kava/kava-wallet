@@ -1,30 +1,32 @@
 export const documentUploadUtils = {
-  uploadFile: async (userId: string, file: File): Promise<string> => {
+  uploadFile: async (_userId: string, file: File): Promise<string> => {
     const formData = new FormData();
-    formData.append('userId', userId);
     formData.append('file', file);
 
-    const response = await fetch('/api/documents/upload', {
+    const uploadRes = await fetch('/api/documents/upload', {
       method: 'POST',
-      body: formData,
       credentials: 'include',
+      body: formData,
     });
 
-    if (!response.ok) {
-      const message = await response.text();
-      throw new Error(message || 'Upload failed');
+    if (!uploadRes.ok) {
+      const message = await uploadRes.text();
+      throw new Error(message || 'Failed to upload file');
     }
 
-    const { url } = (await response.json()) as { url: string };
-    return url;
+    const json = await uploadRes.json();
+    const { publicUrl, url } = (json.data ?? json) as {
+      publicUrl?: string;
+      url?: string;
+    };
+
+    return publicUrl || url || '';
   },
 
-  deleteFile: async (fileUrl: string): Promise<void> => {
+  deleteFile: async (_fileUrl: string): Promise<void> => {
     await fetch('/api/documents/upload', {
       method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ url: fileUrl }),
     });
   },
 };

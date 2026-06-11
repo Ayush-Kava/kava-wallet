@@ -4,11 +4,7 @@ import { useState } from 'react';
 import { Calendar } from '@/components/atoms/ui/calendar';
 import { Button } from '@/components/atoms/ui/button';
 import { ChevronDown } from 'lucide-react';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/atoms/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/atoms/ui/popover';
 import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 
@@ -16,13 +12,9 @@ interface DateRangeCalendarProps {
   onDateRangeChange?: (dateRange: DateRange | undefined) => void;
 }
 
-export function DateRangeCalendar({
-  onDateRangeChange,
-}: DateRangeCalendarProps) {
+export function DateRangeCalendar({ onDateRangeChange }: DateRangeCalendarProps) {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
-  const [tempDateRange, setTempDateRange] = useState<DateRange | undefined>(
-    dateRange,
-  );
+  const [tempDateRange, setTempDateRange] = useState<DateRange | undefined>(dateRange);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const handleApply = () => {
@@ -45,9 +37,9 @@ export function DateRangeCalendar({
   return (
     <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="gap-2">
-          📅 {getDateRangeLabel()}
-          <ChevronDown size={16} />
+        <Button variant="outline" size="sm" className="gap-2 text-xs">
+          {getDateRangeLabel()}
+          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
@@ -58,18 +50,11 @@ export function DateRangeCalendar({
             onSelect={setTempDateRange}
             disabled={false}
           />
-          <div className="flex gap-2 mt-3 justify-end px-2 pb-2">
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              className="text-white border-slate-600 hover:bg-slate-700 h-8 text-xs"
-            >
+          <div className="mt-3 flex justify-end gap-2 px-2 pb-2">
+            <Button variant="outline" size="sm" onClick={handleCancel}>
               Cancel
             </Button>
-            <Button
-              onClick={handleApply}
-              className="bg-blue-500 hover:bg-blue-600 text-white h-8 text-xs"
-            >
+            <Button size="sm" onClick={handleApply}>
               Apply
             </Button>
           </div>

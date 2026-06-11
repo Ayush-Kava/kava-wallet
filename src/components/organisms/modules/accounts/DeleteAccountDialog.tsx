@@ -17,19 +17,15 @@ type DeleteAccountDialogProps = {
   onConfirm: () => void;
 };
 
-export function DeleteAccountDialog({
-  open,
-  onOpenChange,
-  onConfirm,
-}: DeleteAccountDialogProps) {
+export function DeleteAccountDialog({ open, onOpenChange, onConfirm }: DeleteAccountDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Account?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete this account and all associated
-            transactions. This action cannot be undone.
+            This will permanently delete this account and all associated transactions. This action
+            cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

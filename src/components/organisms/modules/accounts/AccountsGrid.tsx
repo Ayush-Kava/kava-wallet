@@ -3,15 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { Account } from '@/types/account-types';
-import {
-  Building2,
-  CreditCard,
-  Edit2,
-  Loader2,
-  Smartphone,
-  Trash2,
-  Wallet,
-} from 'lucide-react';
+import { Building2, CreditCard, Edit2, Loader2, Smartphone, Trash2, Wallet } from 'lucide-react';
 
 const accountTypes = [
   { value: 'cash', label: 'Cash', icon: Wallet },
@@ -46,13 +38,13 @@ export function AccountsGrid({
   onOpenAccount,
 }: AccountsGridProps) {
   const getAccountIcon = (accountType: string) => {
-    const found = accountTypes.find((type) => type.value === accountType);
+    const found = accountTypes.find(type => type.value === accountType);
     return found ? found.icon : Wallet;
   };
 
   if (isLoading) {
     return (
-      <Card className="shadow-card border-0">
+      <Card className="border-0 shadow-card">
         <CardContent className="pt-6">
           <div className="flex items-center justify-center py-12">
             <Loader2 className="animate-spin text-primary" size={32} />
@@ -64,9 +56,9 @@ export function AccountsGrid({
 
   if (!accounts.length) {
     return (
-      <Card className="shadow-card border-0">
+      <Card className="border-0 shadow-card">
         <CardContent>
-          <div className="text-center py-12 text-muted-foreground">
+          <div className="py-12 text-center text-muted-foreground">
             <Wallet size={48} className="mx-auto mb-4 opacity-50" />
             <p className="mb-4">No accounts yet. Add your first account.</p>
             <Button onClick={onCreateClick}>Add Account</Button>
@@ -77,56 +69,56 @@ export function AccountsGrid({
   }
 
   return (
-    <Card className="shadow-card border-0">
+    <Card className="border-0 shadow-card">
       <CardHeader>
         <CardTitle className="font-display">Your Accounts</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {accounts.map((account) => {
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {accounts.map(account => {
             const Icon = getAccountIcon(account.type);
             return (
               <div
                 key={account.id}
                 onClick={() => onOpenAccount(account.id)}
-                className="p-4 rounded-xl border border-border hover:shadow-lg transition-all group relative overflow-hidden cursor-pointer"
+                className="group relative cursor-pointer overflow-hidden rounded-xl border border-border p-4 transition-all hover:shadow-lg"
               >
                 <div
-                  className="absolute top-0 left-0 w-full h-1"
+                  className="absolute left-0 top-0 h-1 w-full"
                   style={{ backgroundColor: account.color }}
                 />
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center"
+                      className="flex h-12 w-12 items-center justify-center rounded-xl"
                       style={{ backgroundColor: `${account.color}20` }}
                     >
                       <Icon style={{ color: account.color }} size={24} />
                     </div>
                     <div>
                       <p className="font-semibold">{account.name}</p>
-                      <p className="text-sm text-muted-foreground capitalize">
+                      <p className="text-sm capitalize text-muted-foreground">
                         {account.type.replace('_', ' ')}
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                     <button
-                      onClick={(event) => {
+                      onClick={event => {
                         event.stopPropagation();
                         onEdit(account);
                       }}
-                      className="p-2 rounded-lg hover:bg-muted transition-colors"
+                      className="rounded-lg p-2 transition-colors hover:bg-muted"
                       aria-label="Edit account"
                     >
                       <Edit2 size={16} className="text-muted-foreground" />
                     </button>
                     <button
-                      onClick={(event) => {
+                      onClick={event => {
                         event.stopPropagation();
                         onDelete(account.id);
                       }}
-                      className="p-2 rounded-lg hover:bg-destructive/10 transition-colors"
+                      className="rounded-lg p-2 transition-colors hover:bg-destructive/10"
                       aria-label="Delete account"
                     >
                       <Trash2 size={16} className="text-destructive" />
@@ -135,17 +127,13 @@ export function AccountsGrid({
                 </div>
                 <div className="mt-4">
                   <p
-                    className={`text-2xl font-bold font-display ${
-                      Number(account.balance) >= 0
-                        ? 'text-foreground'
-                        : 'text-destructive'
+                    className={`font-display text-2xl font-bold ${
+                      Number(account.balance) >= 0 ? 'text-foreground' : 'text-destructive'
                     }`}
                   >
                     {formatCurrency(Number(account.balance), account.currency)}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Current Balance
-                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">Current Balance</p>
                 </div>
               </div>
             );

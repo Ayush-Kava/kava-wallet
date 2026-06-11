@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/organisms/layout/DashboardLayout';
+import { DatePicker } from '@/components/molecules/common/DatePicker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -78,96 +79,74 @@ const formatSignedAmount = (amount: number, type: 'income' | 'expense') => {
 
 const getDateInputValue = (value: string) => value.split('T')[0] || value;
 
-export default function TransactionDetail({
-  transactionId,
-}: TransactionDetailProps) {
-  const router = useRouter();
-  const { user } = useAuth();
-  const { transaction, linkedTransactions, isLoading, refetch } =
-    useTransactionById(transactionId);
-  const { accounts } = useAccounts();
-  const { incomeCategories, expenseCategories } = useCategories();
-  const {
-    updateTransaction,
-    updateTransfer,
-    deleteTransaction,
-    duplicateTransaction,
-  } = useTransactions(1, 7, undefined, { enableList: false });
-
-  // Fetch linked documents for this transaction
-  const { data: linkedDocuments = [], isLoading: documentsLoading } = useQuery({
-    queryKey: ['transaction-documents', transactionId, user?.id],
-    queryFn: () =>
-      documentsApi.getDocumentsByLinkedEntity(user!.id, transactionId),
-    enabled: !!user && !!transactionId,
-  });
-
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [formState, setFormState] = useState<EditFormState>({
-    type: 'expense',
-    accountId: '',
-    categoryId: '',
-    amount: '',
-    description: '',
-    date: '',
-    fromAccountId: '',
-    toAccountId: '',
-  });
-
-  const isTransfer = Boolean(transaction?.transfer_id);
-
-  const transferEntries = useMemo(() => {
-    if (!transaction) return { income: undefined, expense: undefined };
-    const entries = [transaction, ...linkedTransactions];
+const buildEditFormState = (
+  transaction: Transaction,
+  isTransfer: boolean,
+  transferEntries: { income?: Transaction; expense?: Transaction },
+): EditFormState => {
+  if (isTransfer) {
     return {
-      income: entries.find((tx) => tx.type === 'income'),
-      expense: entries.find((tx) => tx.type === 'expense'),
-    } as { income?: Transaction; expense?: Transaction };
-  }, [transaction, linkedTransactions]);
-
-  const initializeForm = () => {
-    if (!transaction) return;
-
-    setFormErrors({});
-    if (isTransfer) {
-      setFormState({
-        type: transaction.type,
-        accountId: transaction.account_id,
-        categoryId: transaction.category_id || '',
-        amount: String(transaction.amount),
-        description: transaction.description || '',
-        date: getDateInputValue(transaction.date),
-        fromAccountId: transferEntries.expense?.account_id || '',
-        toAccountId: transferEntries.income?.account_id || '',
-      });
-      return;
-    }
-
-    setFormState({
       type: transaction.type,
       accountId: transaction.account_id,
       categoryId: transaction.category_id || '',
       amount: String(transaction.amount),
       description: transaction.description || '',
       date: getDateInputValue(transaction.date),
-      fromAccountId: '',
-      toAccountId: '',
-    });
+      fromAccountId: transferEntries.expense?.account_id || '',
+      toAccountId: transferEntries.income?.account_id || '',
+    };
+  }
+
+  return {
+    type: transaction.type,
+    accountId: transaction.account_id,
+    categoryId: transaction.category_id || '',
+    amount: String(transaction.amount),
+    description: transaction.description || '',
+    date: getDateInputValue(transaction.date),
+    fromAccountId: '',
+    toAccountId: '',
   };
+};
 
-  useEffect(() => {
-    initializeForm();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [transaction?.id]);
+interface TransactionEditFormProps {
+  transaction: Transaction;
+  transferEntries: { income?: Transaction; expense?: Transaction };
+  isTransfer: boolean;
+  accounts: ReturnType<typeof useAccounts>['accounts'];
+  incomeCategories: ReturnType<typeof useCategories>['incomeCategories'];
+  expenseCategories: ReturnType<typeof useCategories>['expenseCategories'];
+  isUpdatingTransaction: boolean;
+  isUpdatingTransfer: boolean;
+  updateTransaction: ReturnType<typeof useTransactions>['updateTransaction'];
+  updateTransfer: ReturnType<typeof useTransactions>['updateTransfer'];
+  refetch: () => Promise<unknown>;
+  onClose: () => void;
+}
 
-  const activeCategories =
-    formState.type === 'income' ? incomeCategories : expenseCategories;
+function TransactionEditForm({
+  transaction,
+  transferEntries,
+  isTransfer,
+  accounts,
+  incomeCategories,
+  expenseCategories,
+  isUpdatingTransaction,
+  isUpdatingTransfer,
+  updateTransaction,
+  updateTransfer,
+  refetch,
+  onClose,
+}: TransactionEditFormProps) {
+  const [formState, setFormState] = useState<EditFormState>(() =>
+    buildEditFormState(transaction, isTransfer, transferEntries),
+  );
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const activeCategories = formState.type === 'income' ? incomeCategories : expenseCategories;
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!transaction) return;
 
     const errors: Record<string, string> = {};
     const parsedAmount = Number(formState.amount);
@@ -195,7 +174,7 @@ export default function TransactionDetail({
     setFormErrors({});
 
     if (isTransfer && transaction.transfer_id) {
-      await updateTransfer.mutateAsync({
+      await updateTransfer({
         transfer_id: transaction.transfer_id,
         from_account_id: formState.fromAccountId,
         to_account_id: formState.toAccountId,
@@ -204,11 +183,11 @@ export default function TransactionDetail({
         date: formState.date || transaction.date,
       });
       await refetch();
-      setEditOpen(false);
+      onClose();
       return;
     }
 
-    await updateTransaction.mutateAsync({
+    await updateTransaction({
       id: transaction.id,
       account_id: formState.accountId,
       category_id: formState.categoryId || undefined,
@@ -218,19 +197,275 @@ export default function TransactionDetail({
       date: formState.date || transaction.date,
     });
     await refetch();
-    setEditOpen(false);
+    onClose();
   };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle className="font-display">Edit Transaction</DialogTitle>
+        <DialogDescription>Update the transaction details below.</DialogDescription>
+      </DialogHeader>
+      <form className="space-y-4" onSubmit={handleEditSubmit}>
+        {!isTransfer && (
+          <div className="flex overflow-hidden rounded-lg border-2 border-border">
+            <button
+              type="button"
+              onClick={() =>
+                setFormState(prev => ({
+                  ...prev,
+                  type: 'expense',
+                  categoryId: '',
+                }))
+              }
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                formState.type === 'expense'
+                  ? 'bg-destructive text-destructive-foreground'
+                  : 'bg-muted'
+              }`}
+            >
+              Expense
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setFormState(prev => ({
+                  ...prev,
+                  type: 'income',
+                  categoryId: '',
+                }))
+              }
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                formState.type === 'income' ? 'bg-success text-success-foreground' : 'bg-muted'
+              }`}
+            >
+              Income
+            </button>
+          </div>
+        )}
+
+        {isTransfer ? (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>From account *</Label>
+              <Select
+                value={formState.fromAccountId}
+                onValueChange={value =>
+                  setFormState(prev => ({
+                    ...prev,
+                    fromAccountId: value,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select source account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map(acc => (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      {acc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {formErrors.fromAccountId && (
+                <p className="text-sm text-destructive">{formErrors.fromAccountId}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>To account *</Label>
+              <Select
+                value={formState.toAccountId}
+                onValueChange={value => setFormState(prev => ({ ...prev, toAccountId: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select destination account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map(acc => (
+                    <SelectItem
+                      key={acc.id}
+                      value={acc.id}
+                      disabled={acc.id === formState.fromAccountId}
+                    >
+                      {acc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {formErrors.toAccountId && (
+                <p className="text-sm text-destructive">{formErrors.toAccountId}</p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Account *</Label>
+              <Select
+                value={formState.accountId}
+                onValueChange={value => setFormState(prev => ({ ...prev, accountId: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map(acc => (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      {acc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {formErrors.accountId && (
+                <p className="text-sm text-destructive">{formErrors.accountId}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select
+                value={formState.categoryId || '__none__'}
+                onValueChange={value =>
+                  setFormState(prev => ({
+                    ...prev,
+                    categoryId: value === '__none__' ? '' : value,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No category</SelectItem>
+                  {activeCategories.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="h-3 w-3 rounded-full"
+                          style={{
+                            backgroundColor: cat.color || '#6366F1',
+                          }}
+                        />
+                        {cat.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Amount *</Label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formState.amount}
+              onChange={e =>
+                setFormState(prev => ({
+                  ...prev,
+                  amount: e.target.value,
+                }))
+              }
+            />
+            {formErrors.amount && <p className="text-sm text-destructive">{formErrors.amount}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Date *</Label>
+            <DatePicker
+              value={formState.date}
+              onChange={date => setFormState(prev => ({ ...prev, date }))}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Notes</Label>
+          <Textarea
+            rows={3}
+            value={formState.description}
+            onChange={e =>
+              setFormState(prev => ({
+                ...prev,
+                description: e.target.value,
+              }))
+            }
+            placeholder="Add context for future you"
+          />
+        </div>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isUpdatingTransaction || isUpdatingTransfer}>
+            {isUpdatingTransaction || isUpdatingTransfer ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              'Save changes'
+            )}
+          </Button>
+        </DialogFooter>
+      </form>
+    </>
+  );
+}
+
+export default function TransactionDetail({ transactionId }: TransactionDetailProps) {
+  const router = useRouter();
+  const { user } = useAuth();
+  const { transaction, linkedTransactions, isLoading, refetch } = useTransactionById(transactionId);
+  const { accounts } = useAccounts();
+  const { incomeCategories, expenseCategories } = useCategories();
+  const {
+    updateTransaction,
+    updateTransfer,
+    deleteTransaction,
+    duplicateTransaction,
+    isUpdatingTransaction,
+    isUpdatingTransfer,
+    isDeletingTransaction,
+    isDuplicatingTransaction,
+  } = useTransactions(1, 7, undefined, { enableList: false });
+
+  // Fetch linked documents for this transaction
+  const { data: linkedDocuments = [], isLoading: documentsLoading } = useQuery({
+    queryKey: ['transaction-documents', transactionId, user?.id],
+    queryFn: () => documentsApi.getDocumentsByLinkedEntity(user!.id, transactionId),
+    enabled: !!user && !!transactionId,
+  });
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [editSession, setEditSession] = useState(0);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const isTransfer = Boolean(transaction?.transfer_id);
+
+  const transferEntries = useMemo(() => {
+    if (!transaction) return { income: undefined, expense: undefined };
+    const entries = [transaction, ...linkedTransactions];
+    return {
+      income: entries.find(tx => tx.type === 'income'),
+      expense: entries.find(tx => tx.type === 'expense'),
+    } as { income?: Transaction; expense?: Transaction };
+  }, [transaction, linkedTransactions]);
 
   const handleDuplicate = async () => {
     if (!transaction) return;
-    await duplicateTransaction.mutateAsync(transaction.id);
+    await duplicateTransaction(transaction.id);
     await refetch();
   };
 
   const handleDelete = async () => {
     if (!transaction) return;
-    await deleteTransaction.mutateAsync(transaction.id);
-    router.push('/transactions');
+    await deleteTransaction(transaction.id);
+    router.push('/app/transactions');
   };
 
   const renderLinkedTransfer = () => {
@@ -238,47 +473,39 @@ export default function TransactionDetail({
       return null;
     }
 
-    const otherSide = linkedTransactions.find(
-      (tx) => tx.id !== transaction?.id,
-    );
+    const otherSide = linkedTransactions.find(tx => tx.id !== transaction?.id);
 
     return (
-      <Card className="shadow-card border-border/70">
+      <Card className="border-border/70 shadow-card">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="font-display text-base">
-            Linked Transfer
-          </CardTitle>
+          <CardTitle className="font-display text-base">Linked Transfer</CardTitle>
           {otherSide && (
             <Button variant="ghost" size="sm" asChild>
-              <Link href={`/transactions/${otherSide.id}`} className="gap-2">
+              <Link href={`/app/transactions/${otherSide.id}`} className="gap-2">
                 <LinkIcon size={16} /> View other side
               </Link>
             </Button>
           )}
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <div className="space-y-1">
-              <p className="text-muted-foreground text-xs">From account</p>
-              <p className="font-medium">
-                {transferEntries.expense.accounts?.name || 'Unknown'}
-              </p>
+              <p className="text-xs text-muted-foreground">From account</p>
+              <p className="font-medium">{transferEntries.expense.accounts?.name || 'Unknown'}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-muted-foreground text-xs">To account</p>
-              <p className="font-medium">
-                {transferEntries.income.accounts?.name || 'Unknown'}
-              </p>
+              <p className="text-xs text-muted-foreground">To account</p>
+              <p className="font-medium">{transferEntries.income.accounts?.name || 'Unknown'}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-muted-foreground text-xs">Transfer pair</p>
+              <p className="text-xs text-muted-foreground">Transfer pair</p>
               <Badge variant="secondary" className="w-fit">
                 {transaction?.transfer_id ?? ''}
               </Badge>
             </div>
           </div>
           <Separator />
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Deleting or editing will affect both sides of this transfer.
           </p>
         </CardContent>
@@ -288,9 +515,9 @@ export default function TransactionDetail({
 
   const renderFutureSections = () => (
     <div className="grid gap-4 md:grid-cols-1">
-      <Card className="shadow-card border-border/70">
+      <Card className="border-border/70 shadow-card">
         <CardHeader>
-          <CardTitle className="font-display text-base flex items-center gap-2">
+          <CardTitle className="font-display flex items-center gap-2 text-base">
             <FileText size={18} />
             Linked Documents
           </CardTitle>
@@ -303,30 +530,25 @@ export default function TransactionDetail({
             </div>
           ) : linkedDocuments.length > 0 ? (
             <div className="space-y-3">
-              {linkedDocuments.map((doc) => (
+              {linkedDocuments.map(doc => (
                 <div
                   key={doc.id}
-                  className="flex items-start justify-between p-3 bg-muted/50 rounded-lg border border-border/50"
+                  className="flex items-start justify-between rounded-lg border border-border/50 bg-muted/50 p-3"
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{doc.name}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{doc.name}</p>
                     {doc.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                         {doc.description}
                       </p>
                     )}
-                    <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                       <span>{doc.file_type.toUpperCase()}</span>
                       <span>•</span>
                       <span>{(doc.file_size / 1024 / 1024).toFixed(2)} MB</span>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    asChild
-                    className="ml-2 flex-shrink-0"
-                  >
+                  <Button variant="ghost" size="sm" asChild className="ml-2 flex-shrink-0">
                     <a
                       href={doc.file_url}
                       target="_blank"
@@ -340,9 +562,7 @@ export default function TransactionDetail({
               ))}
             </div>
           ) : (
-            <p className="text-muted-foreground">
-              No documents linked to this transaction.
-            </p>
+            <p className="text-muted-foreground">No documents linked to this transaction.</p>
           )}
         </CardContent>
       </Card>
@@ -353,8 +573,7 @@ export default function TransactionDetail({
     return (
       <DashboardLayout title="Transaction Details" description="Loading…">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading transaction
-          details…
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading transaction details…
         </div>
       </DashboardLayout>
     );
@@ -363,13 +582,10 @@ export default function TransactionDetail({
   // Past the loading guard transaction is non-null.
   const currentTransaction = transaction;
 
-  const amountColor =
-    currentTransaction.type === 'income' ? 'text-success' : 'text-destructive';
+  const amountColor = currentTransaction.type === 'income' ? 'text-success' : 'text-destructive';
 
   const typeBadgeClassName =
-    currentTransaction.type === 'income'
-      ? 'bg-success text-success-foreground'
-      : undefined;
+    currentTransaction.type === 'income' ? 'bg-success text-success-foreground' : undefined;
 
   return (
     <DashboardLayout
@@ -378,7 +594,7 @@ export default function TransactionDetail({
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link href="/transactions" className="gap-2">
+            <Link href="/app/transactions" className="gap-2">
               <ArrowLeft size={16} /> Back to list
             </Link>
           </Button>
@@ -386,10 +602,10 @@ export default function TransactionDetail({
             variant="outline"
             size="sm"
             onClick={() => {
-              initializeForm();
+              setEditSession(session => session + 1);
               setEditOpen(true);
             }}
-            disabled={updateTransaction.isPending || updateTransfer.isPending}
+            disabled={isUpdatingTransaction || isUpdatingTransfer}
             className="gap-2"
           >
             <Pencil size={16} /> Edit
@@ -398,10 +614,10 @@ export default function TransactionDetail({
             variant="outline"
             size="sm"
             onClick={handleDuplicate}
-            disabled={duplicateTransaction.isPending}
+            disabled={isDuplicatingTransaction}
             className="gap-2"
           >
-            {duplicateTransaction.isPending ? (
+            {isDuplicatingTransaction ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Copy size={16} />
@@ -412,7 +628,7 @@ export default function TransactionDetail({
             variant="destructive"
             size="sm"
             onClick={() => setDeleteOpen(true)}
-            disabled={deleteTransaction.isPending}
+            disabled={isDeletingTransaction}
             className="gap-2"
           >
             <Trash2 size={16} /> Delete
@@ -421,7 +637,7 @@ export default function TransactionDetail({
       }
     >
       <div className="space-y-5">
-        <Card className="shadow-card border-border/70">
+        <Card className="border-border/70 shadow-card">
           <CardHeader className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <CardTitle className="font-display text-xl">
@@ -430,11 +646,7 @@ export default function TransactionDetail({
               <div className="flex items-center gap-2">
                 {isTransfer && <Badge variant="secondary">Transfer</Badge>}
                 <Badge
-                  variant={
-                    currentTransaction.type === 'income'
-                      ? 'secondary'
-                      : 'destructive'
-                  }
+                  variant={currentTransaction.type === 'income' ? 'secondary' : 'destructive'}
                   className={typeBadgeClassName}
                 >
                   {currentTransaction.type === 'income' ? 'Income' : 'Expense'}
@@ -446,36 +658,29 @@ export default function TransactionDetail({
             </p>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-5 text-sm">
+            <div className="grid gap-4 text-sm md:grid-cols-5">
               <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">Amount</p>
+                <p className="text-xs text-muted-foreground">Amount</p>
                 <p className={`text-lg font-semibold ${amountColor}`}>
-                  {formatSignedAmount(
-                    currentTransaction.amount,
-                    currentTransaction.type,
-                  )}
+                  {formatSignedAmount(currentTransaction.amount, currentTransaction.type)}
                 </p>
               </div>
               <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">Type</p>
-                <p className="font-medium capitalize">
-                  {currentTransaction.type}
-                </p>
+                <p className="text-xs text-muted-foreground">Type</p>
+                <p className="font-medium capitalize">{currentTransaction.type}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">Date</p>
-                <p className="font-medium">
-                  {formatDateStr(currentTransaction.date)}
-                </p>
+                <p className="text-xs text-muted-foreground">Date</p>
+                <p className="font-medium">{formatDateStr(currentTransaction.date)}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">Account</p>
+                <p className="text-xs text-muted-foreground">Account</p>
                 <p className="font-medium">
                   {currentTransaction.accounts?.name || 'Unknown account'}
                 </p>
               </div>
               <div className="space-y-1">
-                <p className="text-muted-foreground text-xs">Category</p>
+                <p className="text-xs text-muted-foreground">Category</p>
                 <div className="flex items-center gap-2">
                   {currentTransaction.categories?.color && (
                     <span
@@ -493,7 +698,7 @@ export default function TransactionDetail({
             </div>
             <Separator className="my-4" />
             <div className="space-y-1 text-sm">
-              <p className="text-muted-foreground text-xs">Notes</p>
+              <p className="text-xs text-muted-foreground">Notes</p>
               <p className="font-medium">
                 {currentTransaction.description || 'No description added.'}
               </p>
@@ -503,15 +708,14 @@ export default function TransactionDetail({
 
         {renderLinkedTransfer()}
 
-        <Card className="shadow-card border-border/70">
+        <Card className="border-border/70 shadow-card">
           <CardHeader>
             <CardTitle className="font-display text-base">Actions</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-3">
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Repeat size={16} />
-              Editing a transfer updates both entries. Deleting removes the
-              whole pair.
+              Editing a transfer updates both entries. Deleting removes the whole pair.
             </div>
             <div className="flex items-center gap-2">
               <LinkIcon size={16} />
@@ -525,244 +729,23 @@ export default function TransactionDetail({
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-[540px]">
-          <DialogHeader>
-            <DialogTitle className="font-display">Edit Transaction</DialogTitle>
-            <DialogDescription>
-              Update the transaction details below.
-            </DialogDescription>
-          </DialogHeader>
-          <form className="space-y-4" onSubmit={handleEditSubmit}>
-            {!isTransfer && (
-              <div className="flex rounded-lg overflow-hidden border-2 border-border">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setFormState((prev) => ({
-                      ...prev,
-                      type: 'expense',
-                      categoryId: '',
-                    }))
-                  }
-                  className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                    formState.type === 'expense'
-                      ? 'bg-destructive text-destructive-foreground'
-                      : 'bg-muted'
-                  }`}
-                >
-                  Expense
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setFormState((prev) => ({
-                      ...prev,
-                      type: 'income',
-                      categoryId: '',
-                    }))
-                  }
-                  className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                    formState.type === 'income'
-                      ? 'bg-success text-success-foreground'
-                      : 'bg-muted'
-                  }`}
-                >
-                  Income
-                </button>
-              </div>
-            )}
-
-            {isTransfer ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>From account *</Label>
-                  <Select
-                    value={formState.fromAccountId}
-                    onValueChange={(value) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        fromAccountId: value,
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select source account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accounts.map((acc) => (
-                        <SelectItem key={acc.id} value={acc.id}>
-                          {acc.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {formErrors.fromAccountId && (
-                    <p className="text-sm text-destructive">
-                      {formErrors.fromAccountId}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>To account *</Label>
-                  <Select
-                    value={formState.toAccountId}
-                    onValueChange={(value) =>
-                      setFormState((prev) => ({ ...prev, toAccountId: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select destination account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accounts.map((acc) => (
-                        <SelectItem
-                          key={acc.id}
-                          value={acc.id}
-                          disabled={acc.id === formState.fromAccountId}
-                        >
-                          {acc.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {formErrors.toAccountId && (
-                    <p className="text-sm text-destructive">
-                      {formErrors.toAccountId}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Account *</Label>
-                  <Select
-                    value={formState.accountId}
-                    onValueChange={(value) =>
-                      setFormState((prev) => ({ ...prev, accountId: value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accounts.map((acc) => (
-                        <SelectItem key={acc.id} value={acc.id}>
-                          {acc.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {formErrors.accountId && (
-                    <p className="text-sm text-destructive">
-                      {formErrors.accountId}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Select
-                    value={formState.categoryId || "__none__"}
-                    onValueChange={(value) =>
-                      setFormState((prev) => ({ ...prev, categoryId: value === "__none__" ? "" : value }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">No category</SelectItem>
-                      {activeCategories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="w-3 h-3 rounded-full"
-                              style={{
-                                backgroundColor: cat.color || '#6366F1',
-                              }}
-                            />
-                            {cat.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Amount *</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formState.amount}
-                  onChange={(e) =>
-                    setFormState((prev) => ({
-                      ...prev,
-                      amount: e.target.value,
-                    }))
-                  }
-                />
-                {formErrors.amount && (
-                  <p className="text-sm text-destructive">
-                    {formErrors.amount}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Date *</Label>
-                <Input
-                  type="date"
-                  value={formState.date}
-                  onChange={(e) =>
-                    setFormState((prev) => ({ ...prev, date: e.target.value }))
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Textarea
-                rows={3}
-                value={formState.description}
-                onChange={(e) =>
-                  setFormState((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
-                }
-                placeholder="Add context for future you"
-              />
-            </div>
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setEditOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={
-                  updateTransaction.isPending || updateTransfer.isPending
-                }
-              >
-                {updateTransaction.isPending || updateTransfer.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  'Save changes'
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
+          {transaction && editOpen && (
+            <TransactionEditForm
+              key={`${transaction.id}-${editSession}`}
+              transaction={transaction}
+              transferEntries={transferEntries}
+              isTransfer={isTransfer}
+              accounts={accounts}
+              incomeCategories={incomeCategories}
+              expenseCategories={expenseCategories}
+              isUpdatingTransaction={isUpdatingTransaction}
+              isUpdatingTransfer={isUpdatingTransfer}
+              updateTransaction={updateTransaction}
+              updateTransfer={updateTransfer}
+              refetch={refetch}
+              onClose={() => setEditOpen(false)}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
@@ -782,11 +765,7 @@ export default function TransactionDetail({
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteTransaction.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                'Delete'
-              )}
+              {isDeletingTransaction ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

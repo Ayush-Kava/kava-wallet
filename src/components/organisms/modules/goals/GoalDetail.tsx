@@ -39,11 +39,7 @@ import { GoalForm } from './GoalForm';
 import { useGoals } from '@/hooks/useGoals';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useInvestments } from '@/hooks/useInvestments';
-import type {
-  UpdateGoalData,
-  CreateGoalData,
-  CreateGoalFundingData,
-} from '@/types/goal-types';
+import type { UpdateGoalData, CreateGoalData, CreateGoalFundingData } from '@/types/goal-types';
 import { GOAL_PRIORITY_LABELS, GOAL_PRIORITY_COLORS } from '@/types/goal-types';
 import {
   ArrowLeft,
@@ -64,8 +60,16 @@ interface GoalDetailProps {
 
 export default function GoalDetail({ goalId }: GoalDetailProps) {
   const router = useRouter();
-  const { useGoal, updateGoal, deleteGoal, addFunding, removeFunding } =
-    useGoals();
+  const {
+    useGoal,
+    updateGoal,
+    deleteGoal,
+    addFunding,
+    removeFunding,
+    isUpdatingGoal,
+    isDeletingGoal,
+    isAddingFunding,
+  } = useGoals();
   const { data: goal, isLoading } = useGoal(goalId);
   const { accounts } = useAccounts();
   const { investments } = useInvestments();
@@ -84,7 +88,7 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
   });
 
   const handleUpdate = async (data: CreateGoalData | UpdateGoalData) => {
-    await updateGoal.mutateAsync({
+    await updateGoal({
       id: goalId,
       ...data,
     } as UpdateGoalData);
@@ -92,8 +96,8 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
   };
 
   const handleDelete = async () => {
-    await deleteGoal.mutateAsync(goalId);
-    router.push('/goals');
+    await deleteGoal(goalId);
+    router.push('/app/goals');
   };
 
   const handleAddFunding = async (e: React.FormEvent) => {
@@ -102,7 +106,7 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
       goal_id: goalId,
       ...fundingForm,
     };
-    await addFunding.mutateAsync(payload);
+    await addFunding(payload);
     setFundingDialogOpen(false);
     setFundingForm({
       source_type: 'account',
@@ -112,7 +116,7 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
   };
 
   const handleRemoveFunding = async (fundingId: string) => {
-    await removeFunding.mutateAsync(fundingId);
+    await removeFunding(fundingId);
   };
 
   if (isLoading || !goal) {
@@ -125,11 +129,9 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
     );
   }
 
-  const isOverdue =
-    new Date(goal.target_date) < new Date() && goal.status === 'active';
+  const isOverdue = new Date(goal.target_date) < new Date() && goal.status === 'active';
   const daysRemaining = Math.ceil(
-    (new Date(goal.target_date).getTime() - new Date().getTime()) /
-      (1000 * 60 * 60 * 24),
+    (new Date(goal.target_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24),
   );
 
   return (
@@ -139,7 +141,7 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link href="/goals" className="gap-2">
+            <Link href="/app/goals" className="gap-2">
               <ArrowLeft size={16} /> Back
             </Link>
           </Button>
@@ -147,7 +149,7 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
             variant="outline"
             size="sm"
             onClick={() => setEditOpen(true)}
-            disabled={updateGoal.isPending}
+            disabled={isUpdatingGoal}
             className="gap-2"
           >
             <Pencil size={16} /> Edit
@@ -156,7 +158,7 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
             variant="destructive"
             size="sm"
             onClick={() => setDeleteOpen(true)}
-            disabled={deleteGoal.isPending}
+            disabled={isDeletingGoal}
             className="gap-2"
           >
             <Trash2 size={16} /> Delete
@@ -166,12 +168,10 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
     >
       <div className="space-y-5">
         {/* Progress Card */}
-        <Card className="shadow-card border-border/70">
+        <Card className="border-border/70 shadow-card">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="font-display text-xl">
-                Goal Progress
-              </CardTitle>
+              <CardTitle className="font-display text-xl">Goal Progress</CardTitle>
               <div className="flex items-center gap-2">
                 <Badge className={GOAL_PRIORITY_COLORS[goal.priority]}>
                   {GOAL_PRIORITY_LABELS[goal.priority]}
@@ -196,22 +196,18 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
 
             {/* Key Metrics */}
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="text-center p-4 bg-muted/50 rounded-lg">
-                <p className="text-xs text-muted-foreground mb-1">
-                  Target Amount
-                </p>
-                <p className="text-xl font-bold">
-                  ₹{goal.target_amount.toLocaleString('en-IN')}
-                </p>
+              <div className="rounded-lg bg-muted/50 p-4 text-center">
+                <p className="mb-1 text-xs text-muted-foreground">Target Amount</p>
+                <p className="text-xl font-bold">₹{goal.target_amount.toLocaleString('en-IN')}</p>
               </div>
-              <div className="text-center p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-                <p className="text-xs text-muted-foreground mb-1">Saved</p>
+              <div className="rounded-lg bg-green-50 p-4 text-center dark:bg-green-950">
+                <p className="mb-1 text-xs text-muted-foreground">Saved</p>
                 <p className="text-xl font-bold text-green-700 dark:text-green-300">
                   ₹{goal.total_saved.toLocaleString('en-IN')}
                 </p>
               </div>
-              <div className="text-center p-4 bg-muted/50 rounded-lg">
-                <p className="text-xs text-muted-foreground mb-1">Remaining</p>
+              <div className="rounded-lg bg-muted/50 p-4 text-center">
+                <p className="mb-1 text-xs text-muted-foreground">Remaining</p>
                 <p className="text-xl font-bold">
                   ₹{Math.max(0, goal.remaining).toLocaleString('en-IN')}
                 </p>
@@ -220,8 +216,7 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
 
             {!isOverdue && daysRemaining > 0 && (
               <div className="text-center text-sm text-muted-foreground">
-                {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} remaining
-                until target date
+                {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} remaining until target date
               </div>
             )}
 
@@ -238,11 +233,9 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
         </Card>
 
         {/* Funding Sources */}
-        <Card className="shadow-card border-border/70">
+        <Card className="border-border/70 shadow-card">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="font-display text-base">
-              Funding Sources
-            </CardTitle>
+            <CardTitle className="font-display text-base">Funding Sources</CardTitle>
             <Button
               onClick={() => setFundingDialogOpen(true)}
               size="sm"
@@ -260,10 +253,10 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
                   <Wallet size={16} />
                   Bank Accounts
                 </div>
-                {goal.accounts.map((account) => (
+                {goal.accounts.map(account => (
                   <div
                     key={account.id}
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                    className="flex items-center justify-between rounded-lg bg-muted/50 p-3"
                   >
                     <div>
                       <p className="font-medium">{account.name}</p>
@@ -280,9 +273,7 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
                         size="sm"
                         onClick={() => {
                           const funding = goal.funding.find(
-                            (f) =>
-                              f.source_id === account.id &&
-                              f.source_type === 'account',
+                            f => f.source_id === account.id && f.source_type === 'account',
                           );
                           if (funding) handleRemoveFunding(funding.id);
                         }}
@@ -303,16 +294,15 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
                   <TrendingUp size={16} />
                   Investments
                 </div>
-                {goal.investments.map((investment) => (
+                {goal.investments.map(investment => (
                   <div
                     key={investment.id}
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                    className="flex items-center justify-between rounded-lg bg-muted/50 p-3"
                   >
                     <div>
                       <p className="font-medium">{investment.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        Value: ₹
-                        {investment.current_value.toLocaleString('en-IN')}
+                        Value: ₹{investment.current_value.toLocaleString('en-IN')}
                       </p>
                     </div>
                     <div className="text-right">
@@ -324,9 +314,7 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
                         size="sm"
                         onClick={() => {
                           const funding = goal.funding.find(
-                            (f) =>
-                              f.source_id === investment.id &&
-                              f.source_type === 'investment',
+                            f => f.source_id === investment.id && f.source_type === 'investment',
                           );
                           if (funding) handleRemoveFunding(funding.id);
                         }}
@@ -341,12 +329,9 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
             )}
 
             {goal.funding.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <PiggyBank className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>
-                  No funding sources yet. Add accounts or investments to track
-                  progress.
-                </p>
+              <div className="py-8 text-center text-muted-foreground">
+                <PiggyBank className="mx-auto mb-2 h-12 w-12 opacity-50" />
+                <p>No funding sources yet. Add accounts or investments to track progress.</p>
               </div>
             )}
           </CardContent>
@@ -358,7 +343,7 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
         open={editOpen}
         onOpenChange={setEditOpen}
         onSubmit={handleUpdate}
-        isSubmitting={updateGoal.isPending}
+        isSubmitting={isUpdatingGoal}
         initialData={goal}
         mode="edit"
       />
@@ -369,8 +354,8 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Goal</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this goal? This will also remove
-              all funding associations. This action cannot be undone.
+              Are you sure you want to delete this goal? This will also remove all funding
+              associations. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -379,11 +364,7 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteGoal.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                'Delete'
-              )}
+              {isDeletingGoal ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -394,9 +375,7 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle>Add Funding Source</DialogTitle>
-            <DialogDescription>
-              Link an account or investment to this goal
-            </DialogDescription>
+            <DialogDescription>Link an account or investment to this goal</DialogDescription>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleAddFunding}>
             <div className="space-y-2">
@@ -404,7 +383,7 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
               <Select
                 value={fundingForm.source_type}
                 onValueChange={(value: 'account' | 'investment') =>
-                  setFundingForm((prev) => ({
+                  setFundingForm(prev => ({
                     ...prev,
                     source_type: value,
                     source_id: '',
@@ -422,31 +401,22 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
             </div>
 
             <div className="space-y-2">
-              <Label>
-                {fundingForm.source_type === 'account'
-                  ? 'Account'
-                  : 'Investment'}{' '}
-                *
-              </Label>
+              <Label>{fundingForm.source_type === 'account' ? 'Account' : 'Investment'} *</Label>
               <Select
                 value={fundingForm.source_id}
-                onValueChange={(value) =>
-                  setFundingForm((prev) => ({ ...prev, source_id: value }))
-                }
+                onValueChange={value => setFundingForm(prev => ({ ...prev, source_id: value }))}
               >
                 <SelectTrigger>
-                  <SelectValue
-                    placeholder={`Select ${fundingForm.source_type}`}
-                  />
+                  <SelectValue placeholder={`Select ${fundingForm.source_type}`} />
                 </SelectTrigger>
                 <SelectContent>
                   {fundingForm.source_type === 'account'
-                    ? accounts.map((acc) => (
+                    ? accounts.map(acc => (
                         <SelectItem key={acc.id} value={acc.id}>
                           {acc.name} (₹{acc.balance.toLocaleString('en-IN')})
                         </SelectItem>
                       ))
-                    : investments.map((inv) => (
+                    : investments.map(inv => (
                         <SelectItem key={inv.id} value={inv.id}>
                           {inv.name} (₹
                           {inv.current_value.toLocaleString('en-IN')})
@@ -464,8 +434,8 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
                 step="0.01"
                 min="0"
                 value={fundingForm.allocated_amount || ''}
-                onChange={(e) =>
-                  setFundingForm((prev) => ({
+                onChange={e =>
+                  setFundingForm(prev => ({
                     ...prev,
                     allocated_amount: parseFloat(e.target.value) || 0,
                   }))
@@ -475,15 +445,11 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
             </div>
 
             <div className="flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setFundingDialogOpen(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => setFundingDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={addFunding.isPending}>
-                {addFunding.isPending ? (
+              <Button type="submit" disabled={isAddingFunding}>
+                {isAddingFunding ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Adding...

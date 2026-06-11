@@ -24,16 +24,14 @@ export const useLoans = () => {
     });
 
   const createLoan = useMutation({
-    mutationFn: (payload: CreateLoanData) =>
-      loansApi.createLoan(userId, payload),
+    mutationFn: (payload: CreateLoanData) => loansApi.createLoan(userId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: LOANS_QUERY_KEY });
     },
   });
 
   const updateLoan = useMutation({
-    mutationFn: (payload: UpdateLoanData) =>
-      loansApi.updateLoan(userId, payload),
+    mutationFn: (payload: UpdateLoanData) => loansApi.updateLoan(userId, payload),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: LOANS_QUERY_KEY });
       queryClient.invalidateQueries({

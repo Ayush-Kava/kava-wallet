@@ -38,7 +38,7 @@ export const useTransactions = (
   const totalPages = enableList ? data?.totalPages || 0 : 0;
   const listLoading = enableList ? isLoading : false;
 
-  const createTransaction = useMutation({
+  const createTransactionMutation = useMutation({
     mutationFn: async (data: CreateTransactionData) => {
       await transactionsApi.createTransaction(user!.id, data);
     },
@@ -57,7 +57,7 @@ export const useTransactions = (
     },
   });
 
-  const createTransfer = useMutation({
+  const createTransferMutation = useMutation({
     mutationFn: async (data: CreateTransferData) => {
       await transactionsApi.createTransfer(user!.id, data);
     },
@@ -76,11 +76,8 @@ export const useTransactions = (
     },
   });
 
-  const updateTransaction = useMutation({
-    mutationFn: async ({
-      id,
-      ...data
-    }: Partial<CreateTransactionData> & { id: string }) => {
+  const updateTransactionMutation = useMutation({
+    mutationFn: async ({ id, ...data }: Partial<CreateTransactionData> & { id: string }) => {
       await transactionsApi.updateTransaction(user!.id, { id, ...data });
     },
     onSuccess: () => {
@@ -98,7 +95,7 @@ export const useTransactions = (
     },
   });
 
-  const updateTransfer = useMutation({
+  const updateTransferMutation = useMutation({
     mutationFn: async (data: UpdateTransferData) => {
       await transactionsApi.updateTransfer(user!.id, data);
     },
@@ -117,18 +114,16 @@ export const useTransactions = (
     },
   });
 
-  const deleteTransaction = useMutation({
+  const deleteTransactionMutation = useMutation({
     mutationFn: async (id: string) => {
       return transactionsApi.deleteTransaction(user!.id, id);
     },
-    onSuccess: (result) => {
+    onSuccess: result => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['transaction'] });
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
       toast({
-        title: result?.deletedTransfer
-          ? 'Transfer deleted'
-          : 'Transaction deleted',
+        title: result?.deletedTransfer ? 'Transfer deleted' : 'Transaction deleted',
         description: result?.deletedTransfer
           ? 'Both sides of the transfer were removed.'
           : undefined,
@@ -143,17 +138,15 @@ export const useTransactions = (
     },
   });
 
-  const duplicateTransaction = useMutation({
+  const duplicateTransactionMutation = useMutation({
     mutationFn: async (id: string) => {
       return transactionsApi.duplicateTransaction(user!.id, id);
     },
-    onSuccess: (result) => {
+    onSuccess: result => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['transaction'] });
       toast({
-        title: result?.duplicatedTransfer
-          ? 'Transfer duplicated'
-          : 'Transaction duplicated',
+        title: result?.duplicatedTransfer ? 'Transfer duplicated' : 'Transaction duplicated',
         description: result?.duplicatedTransfer
           ? 'A matching pair was created.'
           : 'A copy was created with the same details.',
@@ -173,12 +166,19 @@ export const useTransactions = (
     totalCount,
     totalPages,
     isLoading: listLoading,
-    createTransaction,
-    createTransfer,
-    updateTransaction,
-    updateTransfer,
-    deleteTransaction,
-    duplicateTransaction,
+    createTransaction: (data: CreateTransactionData) => createTransactionMutation.mutateAsync(data),
+    createTransfer: (data: CreateTransferData) => createTransferMutation.mutateAsync(data),
+    updateTransaction: (data: Partial<CreateTransactionData> & { id: string }) =>
+      updateTransactionMutation.mutateAsync(data),
+    updateTransfer: (data: UpdateTransferData) => updateTransferMutation.mutateAsync(data),
+    deleteTransaction: (id: string) => deleteTransactionMutation.mutateAsync(id),
+    duplicateTransaction: (id: string) => duplicateTransactionMutation.mutateAsync(id),
+    isCreatingTransaction: createTransactionMutation.isPending,
+    isCreatingTransfer: createTransferMutation.isPending,
+    isUpdatingTransaction: updateTransactionMutation.isPending,
+    isUpdatingTransfer: updateTransferMutation.isPending,
+    isDeletingTransaction: deleteTransactionMutation.isPending,
+    isDuplicatingTransaction: duplicateTransactionMutation.isPending,
   };
 };
 

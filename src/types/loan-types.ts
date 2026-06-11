@@ -44,3 +44,19 @@ export interface EMIScheduleItem {
 export interface LoanWithSchedule extends Loan {
   schedule: EMIScheduleItem[];
 }
+
+export const toLoanType = (loan: any): Loan => ({
+  id: loan.id,
+  user_id: loan.userId,
+  name: loan.name,
+  principal: Number(loan.principal),
+  interest_rate: Number(loan.interest_rate),
+  tenure_months: loan.tenure_months,
+  emi_amount: Number(loan.emi_amount),
+  start_date: loan.start_date?.toISOString().split('T')[0],
+  account_id: loan.accountId,
+  category_id: loan.categoryId,
+  outstanding_balance: Number(loan.outstanding_balance),
+  created_at: loan.createdAt.toISOString(),
+  updated_at: loan.updatedAt.toISOString(),
+});

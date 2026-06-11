@@ -30,9 +30,8 @@ export const useGoals = () => {
       enabled: !!userId && !!goalId,
     });
 
-  const createGoal = useMutation({
-    mutationFn: (payload: CreateGoalData) =>
-      goalsApi.createGoal(userId, payload),
+  const createGoalMutation = useMutation({
+    mutationFn: (payload: CreateGoalData) => goalsApi.createGoal(userId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: GOALS_QUERY_KEY });
       toast({ title: 'Goal created successfully!' });
@@ -46,9 +45,8 @@ export const useGoals = () => {
     },
   });
 
-  const updateGoal = useMutation({
-    mutationFn: (payload: UpdateGoalData) =>
-      goalsApi.updateGoal(userId, payload),
+  const updateGoalMutation = useMutation({
+    mutationFn: (payload: UpdateGoalData) => goalsApi.updateGoal(userId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: GOALS_QUERY_KEY });
       toast({ title: 'Goal updated!' });
@@ -62,7 +60,7 @@ export const useGoals = () => {
     },
   });
 
-  const deleteGoal = useMutation({
+  const deleteGoalMutation = useMutation({
     mutationFn: (goalId: string) => goalsApi.deleteGoal(userId, goalId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: GOALS_QUERY_KEY });
@@ -77,9 +75,8 @@ export const useGoals = () => {
     },
   });
 
-  const addFunding = useMutation({
-    mutationFn: (payload: CreateGoalFundingData) =>
-      goalsApi.addFunding(userId, payload),
+  const addFundingMutation = useMutation({
+    mutationFn: (payload: CreateGoalFundingData) => goalsApi.addFunding(userId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: GOALS_QUERY_KEY });
       toast({ title: 'Funding added!' });
@@ -93,9 +90,8 @@ export const useGoals = () => {
     },
   });
 
-  const updateFunding = useMutation({
-    mutationFn: (payload: UpdateGoalFundingData) =>
-      goalsApi.updateFunding(userId, payload),
+  const updateFundingMutation = useMutation({
+    mutationFn: (payload: UpdateGoalFundingData) => goalsApi.updateFunding(userId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: GOALS_QUERY_KEY });
       toast({ title: 'Funding updated!' });
@@ -109,9 +105,8 @@ export const useGoals = () => {
     },
   });
 
-  const removeFunding = useMutation({
-    mutationFn: (fundingId: string) =>
-      goalsApi.removeFunding(userId, fundingId),
+  const removeFundingMutation = useMutation({
+    mutationFn: (fundingId: string) => goalsApi.removeFunding(userId, fundingId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: GOALS_QUERY_KEY });
       toast({ title: 'Funding removed!' });
@@ -126,24 +121,22 @@ export const useGoals = () => {
   });
 
   return {
-    // Queries
     goals: getGoals.data || [],
     isLoading: getGoals.isLoading,
     useGoal,
-
-    // Mutations
-    createGoal,
-    updateGoal,
-    deleteGoal,
-    addFunding,
-    updateFunding,
-    removeFunding,
+    createGoal: (payload: CreateGoalData) => createGoalMutation.mutateAsync(payload),
+    updateGoal: (payload: UpdateGoalData) => updateGoalMutation.mutateAsync(payload),
+    deleteGoal: (goalId: string) => deleteGoalMutation.mutateAsync(goalId),
+    addFunding: (payload: CreateGoalFundingData) => addFundingMutation.mutateAsync(payload),
+    updateFunding: (payload: UpdateGoalFundingData) => updateFundingMutation.mutateAsync(payload),
+    removeFunding: (fundingId: string) => removeFundingMutation.mutateAsync(fundingId),
+    isCreatingGoal: createGoalMutation.isPending,
+    isUpdatingGoal: updateGoalMutation.isPending,
+    isDeletingGoal: deleteGoalMutation.isPending,
+    isAddingFunding: addFundingMutation.isPending,
+    isUpdatingFunding: updateFundingMutation.isPending,
+    isRemovingFunding: removeFundingMutation.isPending,
   };
 };
 
-export type {
-  Goal,
-  GoalWithFunding,
-  CreateGoalData,
-  UpdateGoalData,
-} from '@/types/goal-types';
+export type { Goal, GoalWithFunding, CreateGoalData, UpdateGoalData } from '@/types/goal-types';

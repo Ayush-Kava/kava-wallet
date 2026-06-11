@@ -3,15 +3,10 @@ import type { Account, CreateAccountData } from '@/types/account-types';
 
 export const accountsApi = {
   getAccounts: async (userId: string): Promise<Account[]> => {
-    return apiFetch<Account[]>(
-      `/api/accounts?userId=${encodeURIComponent(userId)}`,
-    );
+    return apiFetch<Account[]>(`/api/accounts?userId=${encodeURIComponent(userId)}`);
   },
 
-  createAccount: async (
-    userId: string,
-    data: CreateAccountData,
-  ): Promise<void> => {
+  createAccount: async (userId: string, data: CreateAccountData): Promise<void> => {
     await apiFetch<void>(`/api/accounts`, 'POST', { ...data, user_id: userId });
   },
 

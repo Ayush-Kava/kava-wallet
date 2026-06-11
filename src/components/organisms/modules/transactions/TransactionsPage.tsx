@@ -6,48 +6,45 @@ import TransactionsFilters from './TransactionsFilters';
 import TransactionsTable from './TransactionsTable';
 import { useTransactions } from '@/hooks/useTransactions';
 import { Button } from '@/components/atoms/ui/button';
-import Link from 'next/link';
+import { useUiStore } from '@/store/ui/use-ui-store';
 import { ArrowLeftRight, Plus } from 'lucide-react';
 
 export default function TransactionsPage() {
+  const { openTransactionDialog } = useUiStore();
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 7;
-  const [selectedAccount, setSelectedAccount] = useState('All Accounts');
-  const [selectedCategory, setSelectedCategory] = useState('All Categories');
-  const [selectedType, setSelectedType] = useState<
-    'Income & Expense' | 'Income' | 'Expense'
-  >('Income & Expense');
+  const itemsPerPage = 10;
+  const [accountId, setAccountId] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [accountLabel, setAccountLabel] = useState('All Accounts');
+  const [categoryLabel, setCategoryLabel] = useState('All Categories');
+  const [search, setSearch] = useState('');
+  const [selectedType, setSelectedType] = useState<'Income & Expense' | 'Income' | 'Expense'>(
+    'Income & Expense',
+  );
+
+  const openWithFilters = (mode?: 'expense' | 'income' | 'transfer') => {
+    const dialogMode =
+      mode ??
+      (selectedType === 'Income' ? 'income' : selectedType === 'Expense' ? 'expense' : 'expense');
+
+    openTransactionDialog({
+      mode: dialogMode,
+      accountId: accountId ?? undefined,
+      categoryId: categoryId ?? undefined,
+      preserveAccountOnSave: Boolean(accountId),
+    });
+  };
 
   const { transactions, isLoading, totalCount, totalPages } = useTransactions(
     currentPage,
     itemsPerPage,
     {
-      account: selectedAccount,
-      category: selectedCategory,
+      accountId: accountId ?? undefined,
+      categoryId: categoryId ?? undefined,
+      search: search || undefined,
       type: selectedType,
     },
   );
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const handleAccountChange = (value: string) => {
-    setSelectedAccount(value);
-    setCurrentPage(1);
-  };
-
-  const handleCategoryChange = (value: string) => {
-    setSelectedCategory(value);
-    setCurrentPage(1);
-  };
-
-  const handleTypeChange = (
-    value: 'Income & Expense' | 'Income' | 'Expense',
-  ) => {
-    setSelectedType(value);
-    setCurrentPage(1);
-  };
 
   return (
     <DashboardLayout
@@ -55,29 +52,43 @@ export default function TransactionsPage() {
       description="Track and manage your income and expenses"
       actions={
         <div className="flex items-center gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/transactions/new?type=transfer">
-              <ArrowLeftRight size={18} />
-              Transfer
-            </Link>
+          <Button variant="outline" onClick={() => openWithFilters('transfer')}>
+            <ArrowLeftRight size={18} />
+            Transfer
           </Button>
-          <Button asChild>
-            <Link href="/transactions/new">
-              <Plus size={18} />
-              Add Transaction
-            </Link>
+          <Button onClick={() => openWithFilters()}>
+            <Plus size={18} />
+            Add Transaction
           </Button>
         </div>
       }
     >
       <div className="space-y-6">
         <TransactionsFilters
-          selectedAccount={selectedAccount}
-          selectedCategory={selectedCategory}
+          selectedAccountId={accountId}
+          selectedCategoryId={categoryId}
           selectedType={selectedType}
-          onAccountChange={handleAccountChange}
-          onCategoryChange={handleCategoryChange}
-          onTypeChange={handleTypeChange}
+          search={search}
+          accountLabel={accountLabel}
+          categoryLabel={categoryLabel}
+          onAccountChange={(id, label) => {
+            setAccountId(id);
+            setAccountLabel(label);
+            setCurrentPage(1);
+          }}
+          onCategoryChange={(id, label) => {
+            setCategoryId(id);
+            setCategoryLabel(label);
+            setCurrentPage(1);
+          }}
+          onTypeChange={value => {
+            setSelectedType(value);
+            setCurrentPage(1);
+          }}
+          onSearchChange={value => {
+            setSearch(value);
+            setCurrentPage(1);
+          }}
         />
         <TransactionsTable
           transactions={transactions}
@@ -85,7 +96,7 @@ export default function TransactionsPage() {
           currentPage={currentPage}
           totalPages={totalPages}
           totalCount={totalCount}
-          onPageChange={handlePageChange}
+          onPageChange={setCurrentPage}
         />
       </div>
     </DashboardLayout>

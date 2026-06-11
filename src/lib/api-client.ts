@@ -40,10 +40,7 @@ export const apiFetch = async <T>(
     throw new Error(json.message || 'Request failed');
   }
 
-  if (
-    json?.success === true &&
-    Object.prototype.hasOwnProperty.call(json, 'data')
-  ) {
+  if (json?.success === true && Object.prototype.hasOwnProperty.call(json, 'data')) {
     return json.data as T;
   }
 

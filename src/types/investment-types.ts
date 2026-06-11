@@ -54,3 +54,20 @@ export const INVESTMENT_TYPE_LABELS: Record<InvestmentType, string> = {
   gold: 'Gold',
   crypto: 'Cryptocurrency',
 };
+
+export const toInvestmentType = (investment: any): Investment => ({
+  id: investment.id,
+  user_id: investment.userId,
+  name: investment.name,
+  type: investment.type,
+  invested_amount: Number(investment.invested_amount),
+  current_value: Number(investment.current_value),
+  account_id: investment.accountId,
+  start_date: investment.start_date?.toISOString(),
+  notes: investment.notes,
+  created_at: investment.createdAt.toISOString(),
+  updated_at: investment.updatedAt.toISOString(),
+  ...(investment.account
+    ? { accounts: { id: investment.account.id, name: investment.account.name } }
+    : {}),
+});

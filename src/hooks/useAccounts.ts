@@ -4,6 +4,8 @@ import { useToast } from '@/hooks/useToast';
 import { accountsApi } from '@/services/api/accounts';
 import type { Account, CreateAccountData } from '@/types/account-types';
 
+const EMPTY_ACCOUNTS: Account[] = [];
+
 export const useAccounts = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -17,7 +19,7 @@ export const useAccounts = () => {
     enabled: !!user,
   });
 
-  const createAccount = useMutation({
+  const createAccountMutation = useMutation({
     mutationFn: async (data: CreateAccountData) => {
       await accountsApi.createAccount(user!.id, data);
     },
@@ -34,11 +36,8 @@ export const useAccounts = () => {
     },
   });
 
-  const updateAccount = useMutation({
-    mutationFn: async ({
-      id,
-      ...data
-    }: Partial<CreateAccountData> & { id: string }) => {
+  const updateAccountMutation = useMutation({
+    mutationFn: async ({ id, ...data }: Partial<CreateAccountData> & { id: string }) => {
       await accountsApi.updateAccount(user!.id, { id, ...data });
     },
     onSuccess: () => {
@@ -54,7 +53,7 @@ export const useAccounts = () => {
     },
   });
 
-  const deleteAccount = useMutation({
+  const deleteAccountMutation = useMutation({
     mutationFn: async (id: string) => {
       await accountsApi.deleteAccount(user!.id, id);
     },
@@ -71,16 +70,19 @@ export const useAccounts = () => {
     },
   });
 
-  const totalBalance =
-    accounts?.reduce((sum, acc) => sum + Number(acc.balance), 0) || 0;
+  const totalBalance = accounts?.reduce((sum, acc) => sum + Number(acc.balance), 0) || 0;
 
   return {
-    accounts: accounts || [],
+    accounts: accounts ?? EMPTY_ACCOUNTS,
     isLoading,
     totalBalance,
-    createAccount,
-    updateAccount,
-    deleteAccount,
+    createAccount: (data: CreateAccountData) => createAccountMutation.mutateAsync(data),
+    updateAccount: (data: Partial<CreateAccountData> & { id: string }) =>
+      updateAccountMutation.mutateAsync(data),
+    deleteAccount: (id: string) => deleteAccountMutation.mutateAsync(id),
+    isCreatingAccount: createAccountMutation.isPending,
+    isUpdatingAccount: updateAccountMutation.isPending,
+    isDeletingAccount: deleteAccountMutation.isPending,
   };
 };
 

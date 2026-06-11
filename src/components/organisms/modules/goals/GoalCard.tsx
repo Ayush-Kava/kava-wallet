@@ -12,23 +12,19 @@ interface GoalCardProps {
 }
 
 export function GoalCard({ goal }: GoalCardProps) {
-  const isOverdue =
-    new Date(goal.target_date) < new Date() && goal.status === 'active';
+  const isOverdue = new Date(goal.target_date) < new Date() && goal.status === 'active';
   const daysRemaining = Math.ceil(
-    (new Date(goal.target_date).getTime() - new Date().getTime()) /
-      (1000 * 60 * 60 * 24),
+    (new Date(goal.target_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24),
   );
 
   return (
     <Link href={`/goals/${goal.id}`}>
-      <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+      <Card className="h-full cursor-pointer transition-shadow hover:shadow-lg">
         <CardHeader>
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <CardTitle className="text-lg line-clamp-1">
-                {goal.name}
-              </CardTitle>
-              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+              <CardTitle className="line-clamp-1 text-lg">{goal.name}</CardTitle>
+              <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                 <Calendar size={14} />
                 <span>{formatDateStr(goal.target_date)}</span>
                 {isOverdue && (
@@ -47,9 +43,7 @@ export function GoalCard({ goal }: GoalCardProps) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-muted-foreground">Target</p>
-              <p className="text-sm font-semibold">
-                ₹{goal.target_amount.toLocaleString('en-IN')}
-              </p>
+              <p className="text-sm font-semibold">₹{goal.target_amount.toLocaleString('en-IN')}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Saved</p>
@@ -62,14 +56,12 @@ export function GoalCard({ goal }: GoalCardProps) {
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground">Progress</span>
-              <span className="font-semibold">
-                {goal.progress_percentage.toFixed(1)}%
-              </span>
+              <span className="font-semibold">{goal.progress_percentage.toFixed(1)}%</span>
             </div>
             <Progress value={goal.progress_percentage} className="h-2" />
           </div>
 
-          <div className="flex items-center justify-between text-xs pt-2 border-t">
+          <div className="flex items-center justify-between border-t pt-2 text-xs">
             <span className="text-muted-foreground">Remaining</span>
             <span className="font-semibold">
               ₹{Math.max(0, goal.remaining).toLocaleString('en-IN')}
@@ -77,7 +69,7 @@ export function GoalCard({ goal }: GoalCardProps) {
           </div>
 
           {!isOverdue && daysRemaining > 0 && (
-            <div className="text-xs text-muted-foreground text-center pt-1">
+            <div className="pt-1 text-center text-xs text-muted-foreground">
               {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} remaining
             </div>
           )}

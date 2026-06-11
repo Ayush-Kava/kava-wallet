@@ -1,30 +1,36 @@
 import { Wallet } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
   showText?: boolean;
+  /** Use on dark backgrounds (e.g. auth sidebar) so text stays visible. */
+  variant?: 'default' | 'onDark';
+  className?: string;
 }
 
-const Logo = ({ size = 'md', showText = true }: LogoProps) => {
-  const sizeClasses = {
-    sm: 'w-8 h-8',
-    md: 'w-10 h-10',
-    lg: 'w-14 h-14',
-  };
-
-  const textClasses = {
-    sm: 'text-lg',
-    md: 'text-xl',
-    lg: 'text-3xl',
-  };
+const Logo = ({ size = 'md', showText = true, variant = 'default', className }: LogoProps) => {
+  const iconSize = size === 'lg' ? 22 : size === 'md' ? 18 : 16;
+  const boxSize = size === 'lg' ? 'h-10 w-10' : size === 'md' ? 'h-8 w-8' : 'h-7 w-7';
 
   return (
-    <div className="flex items-center gap-2">
-      <div className={`${sizeClasses[size]} gradient-primary rounded-xl flex items-center justify-center shadow-glow`}>
-        <Wallet className="text-primary-foreground" size={size === 'lg' ? 28 : size === 'md' ? 22 : 18} />
+    <div className={cn('flex items-center gap-2.5', className)}>
+      <div
+        className={cn(
+          boxSize,
+          'flex items-center justify-center rounded-lg bg-primary text-primary-foreground',
+        )}
+      >
+        <Wallet size={iconSize} strokeWidth={2.25} />
       </div>
       {showText && (
-        <span className={`font-display font-bold ${textClasses[size]} gradient-text`}>
+        <span
+          className={cn(
+            'font-semibold tracking-tight',
+            variant === 'onDark' ? 'text-white' : 'text-foreground',
+            size === 'lg' ? 'text-xl' : size === 'md' ? 'text-base' : 'text-sm',
+          )}
+        >
           Kava Wallet
         </span>
       )}

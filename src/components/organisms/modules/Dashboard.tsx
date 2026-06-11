@@ -5,193 +5,146 @@ import { format, startOfMonth, endOfMonth } from 'date-fns';
 import DashboardLayout from '@/components/organisms/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useTransactions } from '@/hooks/useTransactions';
+import { useSummaryTransactions } from '@/hooks/useSummaryTransactions';
 import { useAccounts } from '@/hooks/useAccounts';
-import {
-  TrendingUp,
-  TrendingDown,
-  Wallet,
-  ArrowUpRight,
-  ArrowDownRight,
-} from 'lucide-react';
+import { ROUTES } from '@/lib/constants/routes';
+import { useUiStore } from '@/store/ui/use-ui-store';
+import { cn, formatCurrency } from '@/lib/utils';
+import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import Link from 'next/link';
 
 const Dashboard = () => {
-  const { transactions } = useTransactions();
+  const { transactions } = useSummaryTransactions();
   const { accounts, totalBalance } = useAccounts();
+  const { openTransactionDialog } = useUiStore();
 
   const currentMonthStats = useMemo(() => {
     const now = new Date();
     const start = startOfMonth(now);
     const end = endOfMonth(now);
 
-    const monthTransactions = transactions.filter((t) => {
+    const monthTransactions = transactions.filter(t => {
       const date = new Date(t.date);
       return date >= start && date <= end;
     });
 
     const income = monthTransactions
-      .filter((t) => t.type === 'income')
+      .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + Number(t.amount), 0);
 
     const expenses = monthTransactions
-      .filter((t) => t.type === 'expense')
+      .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + Number(t.amount), 0);
 
     // Net savings = Total balance (which already reflects all transactions)
     // OR if we want monthly: income - expenses for the month
     // The balance already accounts for initial deposits and all transactions
-    const savings = totalBalance;
+    const netFlow = income - expenses;
 
-    return { income, expenses, savings };
-  }, [transactions, totalBalance]);
+    return { income, expenses, netFlow };
+  }, [transactions]);
 
   const recentTransactions = transactions.slice(0, 5);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
 
   return (
     <DashboardLayout
       title="Dashboard"
       description="High-level summary of your money."
       actions={
-        <div className="flex items-center gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/analytics">View Analytics</Link>
+        <div className="flex items-center gap-1.5">
+          <Button variant="outline" size="xs" asChild>
+            <Link href={ROUTES.analytics}>View Analytics</Link>
           </Button>
-          <Button asChild>
-            <Link href="/transactions/new">Add Transaction</Link>
+          <Button size="xs" onClick={() => openTransactionDialog({ mode: 'expense' })}>
+            Add Transaction
           </Button>
         </div>
       }
     >
-      <div className="space-y-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="shadow-card border-0">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
+      <div className="space-y-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              label: 'Total Balance',
+              value: formatCurrency(totalBalance),
+              icon: Wallet,
+              className: 'text-foreground',
+              iconClass: 'bg-primary/10 text-primary',
+            },
+            {
+              label: 'Monthly Income',
+              value: formatCurrency(currentMonthStats.income),
+              icon: TrendingUp,
+              className: 'text-success',
+              iconClass: 'bg-success/10 text-success',
+            },
+            {
+              label: 'Monthly Expenses',
+              value: formatCurrency(currentMonthStats.expenses),
+              icon: TrendingDown,
+              className: 'text-destructive',
+              iconClass: 'bg-destructive/10 text-destructive',
+            },
+            {
+              label: 'Monthly Net',
+              value: formatCurrency(currentMonthStats.netFlow),
+              icon: currentMonthStats.netFlow >= 0 ? ArrowUpRight : ArrowDownRight,
+              className: currentMonthStats.netFlow >= 0 ? 'text-success' : 'text-destructive',
+              iconClass:
+                currentMonthStats.netFlow >= 0
+                  ? 'bg-success/10 text-success'
+                  : 'bg-destructive/10 text-destructive',
+            },
+          ].map(stat => (
+            <Card key={stat.label} className="shadow-none">
+              <CardContent className="flex items-center justify-between p-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Balance</p>
-                  <p className="text-2xl font-bold font-display">
-                    {formatCurrency(totalBalance)}
-                  </p>
-                </div>
-                <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center">
-                  <Wallet className="text-primary-foreground" size={24} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-card border-0">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    Monthly Income
-                  </p>
-                  <p className="text-2xl font-bold font-display text-success">
-                    {formatCurrency(currentMonthStats.income)}
-                  </p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
-                  <TrendingUp className="text-success" size={24} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-card border-0">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    Monthly Expenses
-                  </p>
-                  <p className="text-2xl font-bold font-display text-destructive">
-                    {formatCurrency(currentMonthStats.expenses)}
-                  </p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center">
-                  <TrendingDown className="text-destructive" size={24} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-card border-0">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Net Savings</p>
-                  <p
-                    className={`text-2xl font-bold font-display ${
-                      currentMonthStats.savings >= 0
-                        ? 'text-success'
-                        : 'text-destructive'
-                    }`}
-                  >
-                    {formatCurrency(currentMonthStats.savings)}
+                  <p className="text-xs font-medium text-muted-foreground">{stat.label}</p>
+                  <p className={cn('mt-1 text-xl font-semibold tracking-tight', stat.className)}>
+                    {stat.value}
                   </p>
                 </div>
                 <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                    currentMonthStats.savings >= 0
-                      ? 'bg-success/10'
-                      : 'bg-destructive/10'
-                  }`}
-                >
-                  {currentMonthStats.savings >= 0 ? (
-                    <ArrowUpRight className="text-success" size={24} />
-                  ) : (
-                    <ArrowDownRight className="text-destructive" size={24} />
+                  className={cn(
+                    'flex h-9 w-9 items-center justify-center rounded-md',
+                    stat.iconClass,
                   )}
+                >
+                  <stat.icon className="h-4 w-4" />
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-        {/* Recent Transactions & Accounts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {/* Recent Transactions */}
-          <Card className="shadow-card border-0">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="font-display">
-                Recent Transactions
-              </CardTitle>
+          <Card className="shadow-none">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-base font-semibold">Recent Transactions</CardTitle>
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/transactions">View All</Link>
+                <Link href={ROUTES.transactions}>View All</Link>
               </Button>
             </CardHeader>
             <CardContent>
               {recentTransactions.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="py-8 text-center text-muted-foreground">
                   <p>No transactions yet.</p>
-                  <Button variant="link" asChild>
-                    <Link href="/transactions">Add your first transaction</Link>
+                  <Button variant="link" onClick={() => openTransactionDialog({ mode: 'expense' })}>
+                    Add your first transaction
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {recentTransactions.map((t) => (
+                  {recentTransactions.map(t => (
                     <div
                       key={t.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      className="flex items-center justify-between rounded-lg bg-muted/50 p-3 transition-colors hover:bg-muted"
                     >
                       <div className="flex items-center gap-3">
                         <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center"
+                          className="flex h-10 w-10 items-center justify-center rounded-lg"
                           style={{
-                            backgroundColor: `${
-                              t.categories?.color || '#6366F1'
-                            }20`,
+                            backgroundColor: `${t.categories?.color || '#6366F1'}20`,
                           }}
                         >
                           {t.type === 'income' ? (
@@ -209,10 +162,8 @@ const Dashboard = () => {
                           )}
                         </div>
                         <div>
-                          <p className="font-medium text-sm">
-                            {t.description ||
-                              t.categories?.name ||
-                              'Transaction'}
+                          <p className="text-sm font-medium">
+                            {t.description || t.categories?.name || 'Transaction'}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {format(new Date(t.date), 'MMM d, yyyy')}
@@ -221,9 +172,7 @@ const Dashboard = () => {
                       </div>
                       <span
                         className={`font-semibold ${
-                          t.type === 'income'
-                            ? 'text-success'
-                            : 'text-destructive'
+                          t.type === 'income' ? 'text-success' : 'text-destructive'
                         }`}
                       >
                         {t.type === 'income' ? '+' : '-'}
@@ -237,47 +186,45 @@ const Dashboard = () => {
           </Card>
 
           {/* Accounts */}
-          <Card className="shadow-card border-0">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="font-display">Your Accounts</CardTitle>
+          <Card className="shadow-none">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-base font-semibold">Your Accounts</CardTitle>
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/accounts">Manage</Link>
+                <Link href={ROUTES.accounts}>Manage</Link>
               </Button>
             </CardHeader>
             <CardContent>
               {accounts.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="py-8 text-center text-muted-foreground">
                   <p>No accounts yet.</p>
                   <Button variant="link" asChild>
-                    <Link href="/accounts">Add your first account</Link>
+                    <Link href={ROUTES.accounts}>Add your first account</Link>
                   </Button>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {accounts.map((acc) => (
+                  {accounts.map(acc => (
                     <div
                       key={acc.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      className="flex items-center justify-between rounded-lg bg-muted/50 p-3 transition-colors hover:bg-muted"
                     >
                       <div className="flex items-center gap-3">
                         <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center"
+                          className="flex h-10 w-10 items-center justify-center rounded-lg"
                           style={{ backgroundColor: `${acc.color}20` }}
                         >
                           <Wallet style={{ color: acc.color }} size={20} />
                         </div>
                         <div>
-                          <p className="font-medium text-sm">{acc.name}</p>
-                          <p className="text-xs text-muted-foreground capitalize">
+                          <p className="text-sm font-medium">{acc.name}</p>
+                          <p className="text-xs capitalize text-muted-foreground">
                             {acc.type.replace('_', ' ')}
                           </p>
                         </div>
                       </div>
                       <span
                         className={`font-semibold ${
-                          Number(acc.balance) >= 0
-                            ? 'text-foreground'
-                            : 'text-destructive'
+                          Number(acc.balance) >= 0 ? 'text-foreground' : 'text-destructive'
                         }`}
                       >
                         {formatCurrency(Number(acc.balance))}

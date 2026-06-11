@@ -7,15 +7,10 @@ import { apiFetch } from '@/lib/api-client';
 
 export const recurringRulesApi = {
   getRecurringRules: async (userId: string): Promise<RecurringRule[]> => {
-    return apiFetch<RecurringRule[]>(
-      `/api/recurring-rules?userId=${encodeURIComponent(userId)}`,
-    );
+    return apiFetch<RecurringRule[]>(`/api/recurring-rules?userId=${encodeURIComponent(userId)}`);
   },
 
-  createRecurringRule: async (
-    userId: string,
-    payload: CreateRecurringRuleData,
-  ): Promise<void> => {
+  createRecurringRule: async (userId: string, payload: CreateRecurringRuleData): Promise<void> => {
     await apiFetch<void>(`/api/recurring-rules`, 'POST', {
       ...payload,
       user_id: userId,
@@ -38,11 +33,7 @@ export const recurringRulesApi = {
     });
   },
 
-  togglePause: async (
-    userId: string,
-    id: string,
-    paused: boolean,
-  ): Promise<void> => {
+  togglePause: async (userId: string, id: string, paused: boolean): Promise<void> => {
     await apiFetch<void>(`/api/recurring-rules/${id}/pause`, 'POST', {
       paused,
       user_id: userId,

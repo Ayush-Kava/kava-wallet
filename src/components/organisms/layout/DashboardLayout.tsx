@@ -1,17 +1,29 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/contexts/AuthContext';
+import { ROUTES } from '@/lib/constants/routes';
+import { useUiStore } from '@/store/ui/use-ui-store';
+import { cn } from '@/lib/utils';
 import Logo from '@/components/branding/Logo';
 import { PageHeaderWithAction } from '@/components/molecules/common/PageHeaderWithAction';
 import { Avatar, AvatarFallback } from '@/components/atoms/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import {
-  DropdownButton,
-  type DropdownButtonItem,
-} from '@/components/atoms/DropdownButton';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   LayoutDashboard,
   ArrowUpDown,
@@ -22,18 +34,18 @@ import {
   CreditCard,
   Landmark,
   LineChart,
-  Users,
   FileText,
   LogOut,
   Repeat,
   Menu,
   X,
-  ChevronRight,
-  User,
-  MoreVertical,
   Sun,
   Moon,
   Monitor,
+  PiggyBank,
+  ChevronsUpDown,
+  Palette,
+  Plus,
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -43,188 +55,268 @@ interface DashboardLayoutProps {
   actions?: ReactNode;
 }
 
-const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-  { icon: ArrowUpDown, label: 'Transactions', path: '/transactions' },
-  { icon: Wallet, label: 'Accounts', path: '/accounts' },
-  { icon: CreditCard, label: 'Credit Cards', path: '/credit-cards' },
-  { icon: Landmark, label: 'Loans & EMIs', path: '/loans' },
-  { icon: LineChart, label: 'Investments', path: '/investments' },
-  { icon: Target, label: 'Goals', path: '/goals' },
-  { icon: Target, label: 'Budgets', path: '/budgets' },
-  { icon: Users, label: 'People', path: '/people' },
-  { icon: FileText, label: 'Documents', path: '/documents' },
-  { icon: Repeat, label: 'Recurring', path: '/recurring' },
-  { icon: PieChart, label: 'Analytics', path: '/analytics' },
-  { icon: Settings, label: 'Settings', path: '/settings' },
+const navGroups = [
+  {
+    label: 'Overview',
+    items: [
+      { icon: LayoutDashboard, label: 'Dashboard', path: ROUTES.dashboard },
+      { icon: PieChart, label: 'Analytics', path: ROUTES.analytics },
+    ],
+  },
+  {
+    label: 'Money',
+    items: [
+      { icon: Wallet, label: 'Accounts', path: ROUTES.accounts },
+      { icon: ArrowUpDown, label: 'Transactions', path: ROUTES.transactions },
+      { icon: CreditCard, label: 'Credit Cards', path: ROUTES.creditCards },
+    ],
+  },
+  {
+    label: 'Planning',
+    items: [
+      { icon: PiggyBank, label: 'Budgets', path: ROUTES.budgets },
+      { icon: Target, label: 'Goals', path: ROUTES.goals },
+    ],
+  },
+  {
+    label: 'Track',
+    items: [
+      { icon: Landmark, label: 'Loans', path: ROUTES.loans },
+      { icon: LineChart, label: 'Investments', path: ROUTES.investments },
+      { icon: Repeat, label: 'Recurring', path: ROUTES.recurring },
+    ],
+  },
+  {
+    label: 'Vault',
+    items: [{ icon: FileText, label: 'Documents', path: ROUTES.documents }],
+  },
 ];
 
-const DashboardLayout = ({
-  children,
-  title,
-  description,
-  actions,
-}: DashboardLayoutProps) => {
+const NavLink = ({
+  href,
+  icon: Icon,
+  label,
+  isActive,
+  onClick,
+  className,
+}: {
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  isActive: boolean;
+  onClick?: () => void;
+  className?: string;
+}) => (
+  <Link
+    href={href}
+    onClick={onClick}
+    className={cn(
+      'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] font-medium leading-none transition-colors',
+      className,
+      isActive
+        ? 'bg-primary/10 text-primary'
+        : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+    )}
+  >
+    <Icon className="h-4 w-4 shrink-0" />
+    <span className="truncate">{label}</span>
+  </Link>
+);
+
+const DashboardLayout = ({ children, title, description, actions }: DashboardLayoutProps) => {
   const pathname = usePathname();
   const router = useRouter();
   const { user, signOut } = useAuth();
   const { setTheme } = useTheme();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { mobileMenuOpen, setMobileMenuOpen, openTransactionDialog } = useUiStore();
 
   const handleSignOut = async () => {
     await signOut();
-    router.push('/');
+    router.push(ROUTES.home);
   };
 
-  const getInitials = () => {
-    if (user?.full_name) {
-      return user.full_name
+  const initials = user?.full_name
+    ? user.full_name
         .split(' ')
-        .map((n: string) => n[0])
+        .map(n => n[0])
         .join('')
         .toUpperCase()
-        .slice(0, 2);
-    }
-    return user?.email?.slice(0, 2).toUpperCase() || 'U';
-  };
+        .slice(0, 2)
+    : user?.email?.slice(0, 2).toUpperCase() || 'U';
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-card border-b border-border z-50 flex items-center justify-between px-4">
+  const sidebarContent = (
+    <>
+      <div className="flex h-14 items-center px-4">
         <Logo size="sm" />
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 rounded-lg hover:bg-muted transition-colors"
-        >
-          {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </header>
+      </div>
 
-      {/* Sidebar */}
-      <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-card border-r border-border z-40 transition-transform duration-300 lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="h-16 flex items-center px-6 border-b border-border">
-            <Logo />
+      <Separator />
+
+      <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+        {navGroups.map(group => (
+          <div key={group.label}>
+            <p className="mb-1.5 px-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {group.label}
+            </p>
+            <div className="space-y-0.5">
+              {group.items.map(item => (
+                <div key={item.path} className="flex items-center gap-0.5">
+                  <NavLink
+                    href={item.path}
+                    icon={item.icon}
+                    label={item.label}
+                    isActive={pathname === item.path || pathname.startsWith(`${item.path}/`)}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="min-w-0 flex-1"
+                  />
+                  {item.path === ROUTES.transactions && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 text-muted-foreground hover:text-primary"
+                      aria-label="Add transaction"
+                      onClick={() => {
+                        openTransactionDialog({ mode: 'expense' });
+                        setMobileMenuOpen(false);
+                      }}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
+        ))}
+      </nav>
 
-          {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {navItems.map((item) => {
-              const isActive =
-                pathname === item.path || pathname.startsWith(`${item.path}/`);
-              return (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${
-                    isActive
-                      ? 'gradient-primary text-primary-foreground shadow-lg shadow-primary/30'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                  }`}
-                >
-                  <item.icon size={20} />
-                  <span>{item.label}</span>
-                  {isActive && <ChevronRight size={16} className="ml-auto" />}
-                </Link>
-              );
-            })}
-          </nav>
+      <Separator />
 
-          {/* User Menu */}
-          <div className="p-4 border-t border-border">
-            <div className="flex items-center gap-3 p-3 rounded-xl">
-              <Avatar className="h-10 w-10 flex-shrink-0">
-                <AvatarFallback className="gradient-primary text-primary-foreground font-semibold">
-                  {getInitials()}
+      <div className="p-3">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-2.5 rounded-lg border border-border bg-card px-2.5 py-2 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Avatar className="h-8 w-8 rounded-md">
+                <AvatarFallback className="rounded-md bg-primary/10 text-xs font-semibold text-primary">
+                  {initials}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-semibold truncate text-foreground">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-medium leading-tight text-foreground">
                   {user?.full_name || 'User'}
                 </p>
-                <p className="text-xs text-muted-foreground truncate">
+                <p className="mt-0.5 truncate text-xs leading-tight text-muted-foreground">
                   {user?.email}
                 </p>
               </div>
-              <DropdownButton
-                trigger={
-                  <button className="p-2 rounded-lg hover:bg-muted transition-colors flex-shrink-0">
-                    <MoreVertical size={18} className="text-muted-foreground" />
-                  </button>
-                }
-                items={
-                  [
-                    {
-                      id: 'profile',
-                      label: 'Profile',
-                      onClick: () => router.push('/settings'),
-                      icon: <User size={16} />,
-                    },
-                    {
-                      id: 'theme-light',
-                      label: 'Light',
-                      onClick: () => setTheme('light'),
-                      icon: <Sun size={16} />,
-                    },
-                    {
-                      id: 'theme-dark',
-                      label: 'Dark',
-                      onClick: () => setTheme('dark'),
-                      icon: <Moon size={16} />,
-                    },
-                    {
-                      id: 'theme-system',
-                      label: 'System',
-                      onClick: () => setTheme('system'),
-                      icon: <Monitor size={16} />,
-                    },
-                    {
-                      id: 'sign-out',
-                      label: 'Sign Out',
-                      onClick: handleSignOut,
-                      variant: 'destructive',
-                      icon: <LogOut size={16} />,
-                    },
-                  ] as DropdownButtonItem[]
-                }
-                align="end"
-              />
-            </div>
-          </div>
-        </div>
+              <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="top" className="w-56">
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-tight">{user?.full_name || 'User'}</p>
+                <p className="text-xs leading-tight text-muted-foreground">{user?.email}</p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => router.push(ROUTES.settings)}>
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Palette className="mr-2 h-4 w-4" />
+                Theme
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem onClick={() => setTheme('light')}>
+                  <Sun className="mr-2 h-4 w-4" />
+                  Light
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme('dark')}>
+                  <Moon className="mr-2 h-4 w-4" />
+                  Dark
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme('system')}>
+                  <Monitor className="mr-2 h-4 w-4" />
+                  System
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={handleSignOut}
+              className="text-destructive focus:text-destructive"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between border-b border-border bg-background px-4 lg:hidden">
+        <Logo size="sm" />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+        >
+          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </Button>
+      </header>
+
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-40 flex w-[240px] flex-col border-r border-border bg-[hsl(var(--sidebar-background))] transition-transform duration-200 lg:translate-x-0',
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full',
+        )}
+      >
+        {sidebarContent}
       </aside>
 
-      {/* Overlay */}
-      {sidebarOpen && (
+      {mobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-30 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-30 bg-background/80 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
         />
       )}
 
-      {/* Main Content */}
-      <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen flex flex-col">
-        <div className="sticky top-16 lg:top-0 z-30 bg-card border-b border-border shadow-sm">
-          <div className="px-3 sm:px-4 lg:px-5 xl:px-6 py-3">
+      <div className="lg:pl-[240px]">
+        <header className="sticky top-0 z-20 hidden border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 lg:block">
+          <div className="px-5">
             <PageHeaderWithAction
               title={title}
               description={description}
-              customActionButton={actions ?? undefined}
-              className="items-center"
+              customActionButton={actions}
             />
           </div>
-        </div>
-        <div className="flex-1 px-3 sm:px-4 lg:px-5 xl:px-6 py-4">
-          <div className="mx-auto max-w-[1400px] space-y-6">{children}</div>
-        </div>
-      </main>
+        </header>
+
+        <main className="pt-14 lg:pt-0">
+          <div className="border-b border-border px-4 py-3 lg:hidden">
+            <PageHeaderWithAction
+              title={title}
+              description={description}
+              customActionButton={actions}
+            />
+          </div>
+          <div className="px-5 py-5">
+            <div className="space-y-5">{children}</div>
+          </div>
+        </main>
+      </div>
     </div>
   );
 };

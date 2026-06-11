@@ -8,10 +8,7 @@ import {
 } from '@/lib/utils/response';
 import { getById, update, remove } from '@/services/repositories/accounts';
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const user = await requireUser();
@@ -25,10 +22,7 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const user = await requireUser();
@@ -36,7 +30,6 @@ export async function PUT(
     const {
       name,
       type,
-      balance,
       currency,
       color,
       icon,
@@ -53,7 +46,6 @@ export async function PUT(
     await update(user.id, id, {
       name,
       type,
-      balance,
       currency,
       color,
       icon,
@@ -72,10 +64,7 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const user = await requireUser();

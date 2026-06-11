@@ -7,19 +7,11 @@ import { buttonVariants } from '@/components/ui/button';
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
-function Calendar({
-  className,
-  classNames,
-  showOutsideDays = true,
-  ...props
-}: CalendarProps) {
+function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn(
-        'p-3 bg-gradient-to-b from-slate-900 to-slate-800 rounded-xl',
-        className,
-      )}
+      className={cn('rounded-xl bg-gradient-to-b from-slate-900 to-slate-800 p-3', className)}
       classNames={{
         months: 'flex flex-col sm:flex-row space-y-3 sm:space-x-3 sm:space-y-0',
         month: 'space-y-3',
@@ -43,8 +35,7 @@ function Calendar({
           'h-8 w-9 p-0 font-normal text-white hover:bg-slate-700 rounded-md transition-colors text-sm',
         ),
         day_range_end: 'day-range-end',
-        day_selected:
-          'bg-blue-500 text-white hover:bg-blue-600 focus:bg-blue-600 rounded-md',
+        day_selected: 'bg-blue-500 text-white hover:bg-blue-600 focus:bg-blue-600 rounded-md',
         day_today: 'bg-slate-700 text-white font-semibold',
         day_outside: 'day-outside text-slate-500 opacity-40 hover:opacity-60',
         day_disabled: 'text-slate-600 opacity-40',

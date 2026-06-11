@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { useRouter } from 'next/navigation';
+import { useUiStore } from '@/store/ui/use-ui-store';
 import DashboardLayout from '@/components/organisms/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,9 +27,9 @@ const toDateOrNull = (value?: string | null) => {
 
 export default function CreditCardDetail({ cardId }: CreditCardDetailProps) {
   const router = useRouter();
+  const { openTransactionDialog } = useUiStore();
   const { accounts } = useAccounts();
-  const { account, transactions, transferPartners, isLoading } =
-    useAccountLedger(cardId);
+  const { account, transactions, transferPartners, isLoading } = useAccountLedger(cardId);
 
   const statementWindow = useMemo(() => {
     const start = toDateOrNull(account?.statement_start_date);
@@ -45,7 +46,7 @@ export default function CreditCardDetail({ cardId }: CreditCardDetailProps) {
   const statementTransactions = useMemo(() => {
     if (!statementWindow) return transactions;
 
-    return transactions.filter((transaction) => {
+    return transactions.filter(transaction => {
       const txDate = new Date(transaction.date);
       return txDate >= statementWindow.start && txDate <= statementWindow.end;
     });
@@ -54,7 +55,7 @@ export default function CreditCardDetail({ cardId }: CreditCardDetailProps) {
   const statementTotal = useMemo(
     () =>
       statementTransactions
-        .filter((tx) => tx.type === 'expense')
+        .filter(tx => tx.type === 'expense')
         .reduce((sum, tx) => sum + tx.amount, 0),
     [statementTransactions],
   );
@@ -62,15 +63,12 @@ export default function CreditCardDetail({ cardId }: CreditCardDetailProps) {
   const paymentTotal = useMemo(
     () =>
       statementTransactions
-        .filter((tx) => tx.type === 'income')
+        .filter(tx => tx.type === 'income')
         .reduce((sum, tx) => sum + tx.amount, 0),
     [statementTransactions],
   );
 
-  const outstanding = useMemo(
-    () => statementTotal - paymentTotal,
-    [statementTotal, paymentTotal],
-  );
+  const outstanding = useMemo(() => statementTotal - paymentTotal, [statementTotal, paymentTotal]);
 
   const minimumDue = useMemo(() => {
     if (account?.min_due !== null && account?.min_due !== undefined) {
@@ -101,14 +99,12 @@ export default function CreditCardDetail({ cardId }: CreditCardDetailProps) {
   }, [account, transactions]);
 
   const handlePayBill = () => {
-    const bankAccount = accounts.find((acc) => acc.type === 'bank');
-    const params = new URLSearchParams({ type: 'transfer', to: cardId });
-
-    if (bankAccount) {
-      params.set('from', bankAccount.id);
-    }
-
-    router.push(`/transactions/new?${params.toString()}`);
+    const bankAccount = accounts.find(acc => acc.type === 'bank');
+    openTransactionDialog({
+      mode: 'transfer',
+      toAccountId: cardId,
+      fromAccountId: bankAccount?.id,
+    });
   };
 
   if (!account && !isLoading) {
@@ -128,8 +124,7 @@ export default function CreditCardDetail({ cardId }: CreditCardDetailProps) {
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Card missing</AlertTitle>
             <AlertDescription>
-              We couldn&apos;t find that credit card. Please check the URL and
-              try again.
+              We couldn&apos;t find that credit card. Please check the URL and try again.
             </AlertDescription>
           </Alert>
         </div>
@@ -185,45 +180,40 @@ export default function CreditCardDetail({ cardId }: CreditCardDetailProps) {
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Statement dates missing</AlertTitle>
             <AlertDescription>
-              Add statement start and end dates to calculate outstanding and
-              minimum due accurately.
+              Add statement start and end dates to calculate outstanding and minimum due accurately.
             </AlertDescription>
           </Alert>
         )}
 
         {account && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="shadow-card border-0">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="border-0 shadow-card">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">
-                  Outstanding
-                </CardTitle>
+                <CardTitle className="text-sm text-muted-foreground">Outstanding</CardTitle>
               </CardHeader>
               <CardContent>
                 <p
-                  className={`text-3xl font-display font-bold ${
+                  className={`font-display text-3xl font-bold ${
                     outstanding > 0 ? 'text-destructive' : 'text-success'
                   }`}
                 >
                   {formatCurrency(outstanding, account.currency)}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Expenses in statement - payments
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="shadow-card border-0">
+            <Card className="border-0 shadow-card">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">
-                  Statement Total
-                </CardTitle>
+                <CardTitle className="text-sm text-muted-foreground">Statement Total</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-display font-bold">
+                <p className="font-display text-3xl font-bold">
                   {formatCurrency(statementTotal, account.currency)}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {statementWindow
                     ? `${formatDateStr(statementWindow.start.toISOString())} - ${formatDateStr(statementWindow.end.toISOString())}`
                     : 'Set statement dates to scope totals'}
@@ -231,11 +221,9 @@ export default function CreditCardDetail({ cardId }: CreditCardDetailProps) {
               </CardContent>
             </Card>
 
-            <Card className="shadow-card border-0">
-              <CardHeader className="pb-2 flex items-center justify-between">
-                <CardTitle className="text-sm text-muted-foreground">
-                  Due Date
-                </CardTitle>
+            <Card className="border-0 shadow-card">
+              <CardHeader className="flex items-center justify-between pb-2">
+                <CardTitle className="text-sm text-muted-foreground">Due Date</CardTitle>
                 {account.due_date && (
                   <Badge variant="outline">
                     {format(new Date(account.due_date), 'dd MMM, yyyy')}
@@ -245,10 +233,8 @@ export default function CreditCardDetail({ cardId }: CreditCardDetailProps) {
               <CardContent>
                 {account.due_date ? (
                   <p
-                    className={`text-3xl font-display font-bold ${
-                      (dueCountdown ?? 0) < 0
-                        ? 'text-destructive'
-                        : 'text-foreground'
+                    className={`font-display text-3xl font-bold ${
+                      (dueCountdown ?? 0) < 0 ? 'text-destructive' : 'text-foreground'
                     }`}
                   >
                     {dueCountdown === 0 && 'Due today'}
@@ -266,31 +252,25 @@ export default function CreditCardDetail({ cardId }: CreditCardDetailProps) {
                     Set a due date to track countdown.
                   </p>
                 )}
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Minimum due {formatCurrency(minimumDue, account.currency)}
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="shadow-card border-0">
+            <Card className="border-0 shadow-card">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">
-                  Credit Limit
-                </CardTitle>
+                <CardTitle className="text-sm text-muted-foreground">Credit Limit</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-3xl font-display font-bold">
-                  {account.credit_limit !== null &&
-                  account.credit_limit !== undefined
+                <p className="font-display text-3xl font-bold">
+                  {account.credit_limit !== null && account.credit_limit !== undefined
                     ? formatCurrency(account.credit_limit, account.currency)
                     : 'Not set'}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {availableCredit !== null && availableCredit !== undefined
-                    ? `Available ${formatCurrency(
-                        availableCredit,
-                        account.currency,
-                      )}`
+                    ? `Available ${formatCurrency(availableCredit, account.currency)}`
                     : 'Add a credit limit to see availability'}
                 </p>
               </CardContent>
@@ -302,9 +282,7 @@ export default function CreditCardDetail({ cardId }: CreditCardDetailProps) {
           <div className="rounded-lg border border-border bg-card p-4 shadow-card">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-sm text-muted-foreground">
-                  Statement window
-                </p>
+                <p className="text-sm text-muted-foreground">Statement window</p>
                 <p className="font-semibold">
                   {statementWindow
                     ? `${formatDateStr(statementWindow.start.toISOString())} - ${formatDateStr(statementWindow.end.toISOString())}`
@@ -313,9 +291,7 @@ export default function CreditCardDetail({ cardId }: CreditCardDetailProps) {
               </div>
               <div className="flex items-center gap-2">
                 {statementWindow && (
-                  <Badge variant="secondary">
-                    {statementTransactions.length} tx in cycle
-                  </Badge>
+                  <Badge variant="secondary">{statementTransactions.length} tx in cycle</Badge>
                 )}
                 <Badge variant="outline">{transactions.length} total tx</Badge>
               </div>

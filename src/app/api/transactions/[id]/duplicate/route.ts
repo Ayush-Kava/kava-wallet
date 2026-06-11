@@ -8,10 +8,7 @@ import {
 } from '@/lib/utils/response';
 import { duplicateTransaction } from '@/services/repositories/transactions';
 
-export async function POST(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const user = await requireUser();

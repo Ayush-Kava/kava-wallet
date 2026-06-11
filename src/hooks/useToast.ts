@@ -30,8 +30,9 @@ const TOAST_COPY: Record<
   },
 };
 
-const TOAST_LIMIT = 1;
-const TOAST_REMOVE_DELAY = 1000000;
+const TOAST_LIMIT = 3;
+const TOAST_REMOVE_DELAY = 5000;
+const TOAST_DURATION = 5000;
 
 type ToasterToast = ToastProps & {
   id: string;
@@ -108,9 +109,7 @@ export const reducer = (state: State, action: Action): State => {
     case 'UPDATE_TOAST':
       return {
         ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === action.toast.id ? { ...t, ...action.toast } : t,
-        ),
+        toasts: state.toasts.map(t => (t.id === action.toast.id ? { ...t, ...action.toast } : t)),
       };
 
     case 'DISMISS_TOAST': {
@@ -121,14 +120,14 @@ export const reducer = (state: State, action: Action): State => {
       if (toastId) {
         addToRemoveQueue(toastId);
       } else {
-        state.toasts.forEach((toast) => {
+        state.toasts.forEach(toast => {
           addToRemoveQueue(toast.id);
         });
       }
 
       return {
         ...state,
-        toasts: state.toasts.map((t) =>
+        toasts: state.toasts.map(t =>
           t.id === toastId || toastId === undefined
             ? {
                 ...t,
@@ -147,7 +146,7 @@ export const reducer = (state: State, action: Action): State => {
       }
       return {
         ...state,
-        toasts: state.toasts.filter((t) => t.id !== action.toastId),
+        toasts: state.toasts.filter(t => t.id !== action.toastId),
       };
   }
 };
@@ -158,15 +157,16 @@ let memoryState: State = { toasts: [] };
 
 function dispatch(action: Action) {
   memoryState = reducer(memoryState, action);
-  listeners.forEach((listener) => {
+  listeners.forEach(listener => {
     listener(memoryState);
   });
 }
 
 type Toast = Omit<ToasterToast, 'id'>;
 
-function toast({ ...props }: Toast) {
+function toast({ variant, dataIntent, duration, ...props }: Toast) {
   const id = genId();
+  const intent = dataIntent ?? (variant === 'destructive' ? 'error' : 'success');
 
   const update = (props: ToasterToast) =>
     dispatch({
@@ -179,9 +179,12 @@ function toast({ ...props }: Toast) {
     type: 'ADD_TOAST',
     toast: {
       ...props,
+      variant,
+      dataIntent: intent,
+      duration: duration ?? TOAST_DURATION,
       id,
       open: true,
-      onOpenChange: (open) => {
+      onOpenChange: open => {
         if (!open) dismiss();
       },
     },
@@ -202,13 +205,7 @@ type ShowToastOptions = {
   duration?: number;
 };
 
-function showToast({
-  intent = 'info',
-  title,
-  description,
-  action,
-  duration,
-}: ShowToastOptions) {
+function showToast({ intent = 'info', title, description, action, duration }: ShowToastOptions) {
   const copy = TOAST_COPY[intent];
   return toast({
     title: title ?? copy.title,

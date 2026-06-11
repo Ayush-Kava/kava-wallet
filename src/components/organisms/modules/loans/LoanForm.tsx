@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,6 +14,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/molecules/common/DatePicker';
 import {
   Select,
   SelectContent,
@@ -27,52 +28,78 @@ import type { CreateLoanData } from '@/types/loan-types';
 import type { Account } from '@/types/account-types';
 import type { Category } from '@/types/category-types';
 
-const loanSchema = z.object({
+const loanFormSchema = z.object({
   name: z.string().min(1, 'Loan name is required'),
-  principal: z.coerce.number().positive('Principal must be positive'),
-  interest_rate: z.coerce.number().min(0, 'Interest rate cannot be negative'),
-  tenure_months: z.coerce
-    .number()
-    .int()
-    .positive('Tenure must be at least 1 month'),
-  // Allow zero so the form can submit before EMI is auto-calculated
-  emi_amount: z.coerce
-    .number()
-    .nonnegative('EMI amount must be zero or positive'),
+  principal: z
+    .string()
+    .min(1, 'Principal is required')
+    .refine(v => Number(v) > 0, 'Principal must be positive'),
+  interest_rate: z
+    .string()
+    .min(1, 'Interest rate is required')
+    .refine(v => Number(v) >= 0 && !Number.isNaN(Number(v)), 'Interest rate cannot be negative'),
+  tenure_months: z
+    .string()
+    .min(1, 'Tenure is required')
+    .refine(
+      v => Number(v) >= 1 && Number.isInteger(Number(v)),
+      'Tenure must be at least 1 month',
+    ),
   start_date: z.string().min(1, 'Start date is required'),
   account_id: z.string().min(1, 'Account is required'),
   category_id: z.string().optional(),
 });
 
-type LoanFormData = z.infer<typeof loanSchema>;
+type LoanFormData = z.infer<typeof loanFormSchema>;
+
+const CategoryColorDot = ({ color }: { color?: string }) => (
+  <span
+    className="h-3 w-3 shrink-0 rounded-full"
+    style={{ backgroundColor: color || '#6366F1' }}
+  />
+);
+
+const CategoryOption = ({ name, color }: { name: string; color?: string }) => (
+  <span className="flex items-center gap-2">
+    <CategoryColorDot color={color} />
+    <span>{name}</span>
+  </span>
+);
 
 interface LoanFormProps {
   onSubmit: (data: CreateLoanData) => Promise<void>;
   isLoading?: boolean;
+  /** When true, renders without card chrome (for use inside a dialog). */
+  embedded?: boolean;
 }
 
-export const LoanForm = ({ onSubmit, isLoading = false }: LoanFormProps) => {
+export const LoanForm = ({ onSubmit, isLoading = false, embedded = false }: LoanFormProps) => {
   const [showSchedule, setShowSchedule] = useState(false);
   const { accounts = [] } = useAccounts();
   const { categories = [] } = useCategories();
+  const expenseCategories = useMemo(
+    () => categories.filter((cat: Category) => cat.type === 'expense'),
+    [categories],
+  );
 
   const form = useForm<LoanFormData>({
-    resolver: zodResolver(loanSchema),
+    resolver: zodResolver(loanFormSchema),
     defaultValues: {
       name: '',
-      principal: 0,
-      interest_rate: 0,
-      tenure_months: 12,
-      emi_amount: 0,
+      principal: '',
+      interest_rate: '',
+      tenure_months: '',
       start_date: new Date().toISOString().slice(0, 10),
       account_id: '',
       category_id: '',
     },
   });
 
-  const principal = Number(form.watch('principal') ?? 0);
-  const interestRate = Number(form.watch('interest_rate') ?? 0);
-  const tenureMonths = Number(form.watch('tenure_months') ?? 0);
+  const selectedCategoryId = form.watch('category_id');
+  const selectedCategory = expenseCategories.find(cat => cat.id === selectedCategoryId);
+  const principal = Number(form.watch('principal') || 0);
+  const interestRate = Number(form.watch('interest_rate') || 0);
+  const tenureMonths = Number(form.watch('tenure_months') || 0);
 
   // Calculate EMI when inputs change
   const calculateEMI = () => {
@@ -81,8 +108,7 @@ export const LoanForm = ({ onSubmit, isLoading = false }: LoanFormProps) => {
     const monthlyRate = interestRate / 100 / 12;
     if (monthlyRate === 0) return principal / tenureMonths;
 
-    const numerator =
-      principal * monthlyRate * Math.pow(1 + monthlyRate, tenureMonths);
+    const numerator = principal * monthlyRate * Math.pow(1 + monthlyRate, tenureMonths);
     const denominator = Math.pow(1 + monthlyRate, tenureMonths) - 1;
     return numerator / denominator;
   };
@@ -92,32 +118,25 @@ export const LoanForm = ({ onSubmit, isLoading = false }: LoanFormProps) => {
   // Calculate total amount to be paid
   const totalAmountToPay = !isNaN(emi) && emi > 0 ? emi * tenureMonths : 0;
   const totalInterest =
-    !isNaN(totalAmountToPay) && totalAmountToPay > 0
-      ? totalAmountToPay - principal
-      : 0;
+    !isNaN(totalAmountToPay) && totalAmountToPay > 0 ? totalAmountToPay - principal : 0;
 
   const handleSubmit = async (data: LoanFormData) => {
     const payload: CreateLoanData = {
-      ...data,
+      name: data.name,
+      principal: Number(data.principal),
+      interest_rate: Number(data.interest_rate),
+      tenure_months: Number(data.tenure_months),
       emi_amount: emi,
+      start_date: data.start_date,
+      account_id: data.account_id,
+      category_id: data.category_id,
     };
     await onSubmit(payload);
   };
 
-  return (
-    <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-lg border border-gray-200 dark:border-slate-700">
-      <div className="px-6 py-6 border-b border-gray-200 dark:border-slate-700">
-        <h2 className="text-2xl font-bold">Create New Loan</h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Enter loan details to set up EMI tracking
-        </p>
-      </div>
-      <div className="px-6 py-6">
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-6"
-          >
+  const formBody = (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className={embedded ? 'space-y-4' : 'space-y-6'}>
             {/* Loan Name */}
             <FormField
               control={form.control}
@@ -156,12 +175,7 @@ export const LoanForm = ({ onSubmit, isLoading = false }: LoanFormProps) => {
                   <FormItem>
                     <FormLabel>Interest Rate (% p.a.)</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0"
-                        {...field}
-                      />
+                      <Input type="number" step="0.01" placeholder="0" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -192,7 +206,7 @@ export const LoanForm = ({ onSubmit, isLoading = false }: LoanFormProps) => {
                   <FormItem>
                     <FormLabel>Start Date</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <DatePicker value={field.value} onChange={field.onChange} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -202,35 +216,25 @@ export const LoanForm = ({ onSubmit, isLoading = false }: LoanFormProps) => {
 
             {/* EMI Display & Total Amount */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-blue-50 dark:bg-slate-800 p-4 rounded-lg border border-blue-200 dark:border-blue-900">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Monthly EMI
-                </p>
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-slate-800">
+                <p className="text-sm text-gray-600 dark:text-gray-400">Monthly EMI</p>
                 <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                   ₹{!isNaN(emi) && emi > 0 ? emi.toFixed(2) : '0.00'}
                 </p>
               </div>
 
-              <div className="bg-green-50 dark:bg-slate-800 p-4 rounded-lg border border-green-200 dark:border-green-900">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Total You Will Pay
-                </p>
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-slate-800">
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total You Will Pay</p>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                   ₹
                   {!isNaN(totalAmountToPay) && totalAmountToPay > 0
                     ? totalAmountToPay.toFixed(2)
                     : '0.00'}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                  (Principal: ₹
-                  {principal && !isNaN(principal)
-                    ? principal.toFixed(2)
-                    : '0.00'}{' '}
-                  + Interest: ₹
-                  {!isNaN(totalInterest) && totalInterest > 0
-                    ? totalInterest.toFixed(2)
-                    : '0.00'}
-                  )
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-500">
+                  (Principal: ₹{principal && !isNaN(principal) ? principal.toFixed(2) : '0.00'} +
+                  Interest: ₹
+                  {!isNaN(totalInterest) && totalInterest > 0 ? totalInterest.toFixed(2) : '0.00'})
                 </p>
               </div>
             </div>
@@ -268,19 +272,30 @@ export const LoanForm = ({ onSubmit, isLoading = false }: LoanFormProps) => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category (Optional)</FormLabel>
-                    <Select
-                      value={field.value || ''}
-                      onValueChange={field.onChange}
-                    >
+                    <Select value={field.value || ''} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
+                          {selectedCategory ? (
+                            <CategoryOption
+                              name={selectedCategory.name}
+                              color={selectedCategory.color}
+                            />
+                          ) : (
+                            <SelectValue placeholder="Select category" />
+                          )}
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
-                        {categories.map((cat: Category) => (
+                      <SelectContent
+                        side="bottom"
+                        align="start"
+                        position="popper"
+                        sideOffset={4}
+                        collisionPadding={16}
+                        className="max-h-48"
+                      >
+                        {expenseCategories.map((cat: Category) => (
                           <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
+                            <CategoryOption name={cat.name} color={cat.color} />
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -295,13 +310,13 @@ export const LoanForm = ({ onSubmit, isLoading = false }: LoanFormProps) => {
             <button
               type="button"
               onClick={() => setShowSchedule(!showSchedule)}
-              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+              className="text-sm text-blue-600 hover:underline dark:text-blue-400"
             >
               {showSchedule ? 'Hide' : 'Preview'} EMI Schedule
             </button>
 
             {showSchedule && principal && interestRate && tenureMonths && (
-              <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg max-h-64 overflow-y-auto">
+              <div className="max-h-64 overflow-y-auto rounded-lg bg-gray-50 p-4 dark:bg-slate-800">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-slate-700">
@@ -311,52 +326,60 @@ export const LoanForm = ({ onSubmit, isLoading = false }: LoanFormProps) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {Array.from({ length: Math.min(tenureMonths, 12) }).map(
-                      (_, i) => {
-                        const monthlyRate = interestRate / 100 / 12;
-                        let balance = principal;
-                        let totalEmi = 0;
+                    {Array.from({ length: Math.min(tenureMonths, 12) }).map((_, i) => {
+                      const monthlyRate = interestRate / 100 / 12;
+                      let balance = principal;
+                      let totalEmi = 0;
 
-                        for (let j = 0; j < i + 1; j++) {
-                          const interest = balance * monthlyRate;
-                          const principalPay = principal / tenureMonths;
-                          totalEmi = principalPay + interest;
-                          balance -= principalPay;
-                        }
+                      for (let j = 0; j < i + 1; j++) {
+                        const interest = balance * monthlyRate;
+                        const principalPay = principal / tenureMonths;
+                        totalEmi = principalPay + interest;
+                        balance -= principalPay;
+                      }
 
-                        return (
-                          <tr
-                            key={i}
-                            className="border-b border-gray-200 dark:border-slate-700 text-xs"
-                          >
-                            <td>{i + 1}</td>
-                            <td className="text-right">
-                              ₹{totalEmi.toFixed(0)}
-                            </td>
-                            <td className="text-right">
-                              ₹{Math.max(0, balance).toFixed(0)}
-                            </td>
-                          </tr>
-                        );
-                      },
-                    )}
+                      return (
+                        <tr
+                          key={i}
+                          className="border-b border-gray-200 text-xs dark:border-slate-700"
+                        >
+                          <td>{i + 1}</td>
+                          <td className="text-right">₹{totalEmi.toFixed(0)}</td>
+                          <td className="text-right">₹{Math.max(0, balance).toFixed(0)}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
                 {tenureMonths > 12 && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                     Showing first 12 months...
                   </p>
                 )}
               </div>
             )}
 
-            {/* Submit */}
-            <Button type="submit" disabled={isLoading} className="w-full">
-              {isLoading ? 'Creating Loan...' : 'Create Loan'}
-            </Button>
-          </form>
-        </Form>
+        {/* Submit */}
+        <Button type="submit" disabled={isLoading} className="w-full">
+          {isLoading ? 'Creating Loan...' : 'Create Loan'}
+        </Button>
+      </form>
+    </Form>
+  );
+
+  if (embedded) {
+    return formBody;
+  }
+
+  return (
+    <div className="w-full max-w-2xl rounded-lg border border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+      <div className="border-b border-gray-200 px-6 py-6 dark:border-slate-700">
+        <h2 className="text-2xl font-bold">Create New Loan</h2>
+        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          Enter loan details to set up EMI tracking
+        </p>
       </div>
+      <div className="px-6 py-6">{formBody}</div>
     </div>
   );
 };

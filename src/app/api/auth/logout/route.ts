@@ -1,9 +1,6 @@
 import { cookies } from 'next/headers';
 import { clearSession, SESSION_COOKIE } from '@/lib/auth';
-import {
-  successResponse,
-  internalServerErrorResponse,
-} from '@/lib/utils/response';
+import { successResponse, internalServerErrorResponse } from '@/lib/utils/response';
 
 export async function POST() {
   try {

@@ -37,12 +37,9 @@ export function LinkDocumentDialog({
   const [entityId, setEntityId] = useState('');
 
   // Fetch data for different entity types
-  const { transactions, isLoading: transactionsLoading } = useTransactions(
-    1,
-    100,
-    undefined,
-    { enableList: true },
-  );
+  const { transactions, isLoading: transactionsLoading } = useTransactions(1, 100, undefined, {
+    enableList: true,
+  });
   const { accounts, isLoading: accountsLoading } = useAccounts();
   const { data: loans, isLoading: loansLoading } = useLoans().getLoans;
 
@@ -50,18 +47,18 @@ export function LinkDocumentDialog({
   const entities = useMemo(() => {
     switch (entityType) {
       case 'transaction':
-        return transactions.map((t) => ({
+        return transactions.map(t => ({
           id: t.id,
           label: `${t.description || 'Transaction'} - ${t.amount}`,
         }));
       case 'account':
-        return (accounts || []).map((a) => ({
+        return (accounts || []).map(a => ({
           id: a.id,
           label: a.name,
         }));
       case 'loan':
       case 'emi':
-        return (loans || []).map((l) => ({
+        return (loans || []).map(l => ({
           id: l.id,
           label: l.name,
         }));
@@ -95,10 +92,10 @@ export function LinkDocumentDialog({
 
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium mb-2 block">Link to</label>
+            <label className="mb-2 block text-sm font-medium">Link to</label>
             <Select
               value={entityType}
-              onValueChange={(value) => {
+              onValueChange={value => {
                 setEntityType(value as LinkedEntityType);
                 setEntityId('');
               }}
@@ -118,26 +115,22 @@ export function LinkDocumentDialog({
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-2 block">
+            <label className="mb-2 block text-sm font-medium">
               Select {entityType.charAt(0).toUpperCase() + entityType.slice(1)}
             </label>
             {isLoading && entityType !== 'credit_card' ? (
               <div className="flex items-center justify-center py-2">
-                <Loader2 className="animate-spin mr-2" size={16} />
+                <Loader2 className="mr-2 animate-spin" size={16} />
                 <span className="text-sm text-gray-500">Loading...</span>
               </div>
             ) : (
-              <Select
-                value={entityId}
-                onValueChange={setEntityId}
-                disabled={isSubmitting}
-              >
+              <Select value={entityId} onValueChange={setEntityId} disabled={isSubmitting}>
                 <SelectTrigger>
                   <SelectValue placeholder={`Select a ${entityType}`} />
                 </SelectTrigger>
                 <SelectContent>
                   {entities.length > 0 ? (
-                    entities.map((entity) => (
+                    entities.map(entity => (
                       <SelectItem key={entity.id} value={entity.id}>
                         {entity.label}
                       </SelectItem>

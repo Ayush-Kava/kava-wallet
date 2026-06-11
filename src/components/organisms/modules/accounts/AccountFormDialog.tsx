@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,20 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { Account, CreateAccountData } from '@/types/account-types';
-import {
-  CreditCard,
-  Building2,
-  Smartphone,
-  Wallet,
-  Loader2,
-} from 'lucide-react';
+import { DatePicker } from '@/components/molecules/common/DatePicker';
+import { CreditCard, Building2, Smartphone, Wallet, Loader2 } from 'lucide-react';
 
 const accountSchema = z
   .object({
@@ -115,70 +105,59 @@ type AccountFormDialogProps = {
   isSubmitting: boolean;
 };
 
-export function AccountFormDialog({
-  open,
-  onOpenChange,
-  onSubmit,
-  editingAccount,
-  isSubmitting,
-}: AccountFormDialogProps) {
-  const [name, setName] = useState('');
-  const [type, setType] = useState<'cash' | 'bank' | 'credit_card' | 'wallet'>(
-    'bank',
-  );
-  const [balance, setBalance] = useState('');
-  const [color, setColor] = useState(colorOptions[0]);
-  const [statementStartDate, setStatementStartDate] = useState('');
-  const [statementEndDate, setStatementEndDate] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [creditLimit, setCreditLimit] = useState('');
-  const [minDue, setMinDue] = useState('');
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+function getAccountFormValues(editingAccount?: Account | null) {
+  if (!editingAccount) {
+    return {
+      name: '',
+      type: 'bank' as const,
+      balance: '',
+      color: colorOptions[0],
+      statementStartDate: '',
+      statementEndDate: '',
+      dueDate: '',
+      creditLimit: '',
+      minDue: '',
+    };
+  }
 
-  useEffect(() => {
-    if (!editingAccount) {
-      resetForm();
-      return;
-    }
-
-    setName(editingAccount.name);
-    setType(editingAccount.type);
-    setBalance(String(editingAccount.balance));
-    setColor(editingAccount.color);
-    setStatementStartDate(editingAccount.statement_start_date || '');
-    setStatementEndDate(editingAccount.statement_end_date || '');
-    setDueDate(editingAccount.due_date || '');
-    setCreditLimit(
-      editingAccount.credit_limit !== null &&
-        editingAccount.credit_limit !== undefined
+  return {
+    name: editingAccount.name,
+    type: editingAccount.type,
+    balance: String(editingAccount.balance),
+    color: editingAccount.color,
+    statementStartDate: editingAccount.statement_start_date || '',
+    statementEndDate: editingAccount.statement_end_date || '',
+    dueDate: editingAccount.due_date || '',
+    creditLimit:
+      editingAccount.credit_limit !== null && editingAccount.credit_limit !== undefined
         ? String(editingAccount.credit_limit)
         : '',
-    );
-    setMinDue(
+    minDue:
       editingAccount.min_due !== null && editingAccount.min_due !== undefined
         ? String(editingAccount.min_due)
         : '',
-    );
-    setFormErrors({});
-  }, [editingAccount]);
-
-  const resetForm = () => {
-    setName('');
-    setType('bank');
-    setBalance('');
-    setColor(colorOptions[0]);
-    setStatementStartDate('');
-    setStatementEndDate('');
-    setDueDate('');
-    setCreditLimit('');
-    setMinDue('');
-    setFormErrors({});
   };
+}
 
-  const accountLabel = useMemo(
-    () => (editingAccount ? 'Edit Account' : 'New Account'),
-    [editingAccount],
-  );
+interface AccountFormProps {
+  editingAccount?: Account | null;
+  onSubmit: (data: CreateAccountData, accountId?: string) => Promise<void>;
+  onOpenChange: (open: boolean) => void;
+  isSubmitting: boolean;
+}
+
+function AccountForm({ editingAccount, onSubmit, onOpenChange, isSubmitting }: AccountFormProps) {
+  const initial = getAccountFormValues(editingAccount);
+  const [name, setName] = useState(initial.name);
+  const [type, setType] = useState(initial.type);
+  const [balance, setBalance] = useState(initial.balance);
+  const [color, setColor] = useState(initial.color);
+  const [statementStartDate, setStatementStartDate] = useState(initial.statementStartDate);
+  const [statementEndDate, setStatementEndDate] = useState(initial.statementEndDate);
+  const [dueDate, setDueDate] = useState(initial.dueDate);
+  const [creditLimit, setCreditLimit] = useState(initial.creditLimit);
+  const [minDue, setMinDue] = useState(initial.minDue);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,22 +168,16 @@ export function AccountFormDialog({
       type,
       balance: balance ? parseFloat(balance) : 0,
       color,
-      statement_start_date:
-        type === 'credit_card' ? statementStartDate || undefined : undefined,
-      statement_end_date:
-        type === 'credit_card' ? statementEndDate || undefined : undefined,
+      statement_start_date: type === 'credit_card' ? statementStartDate || undefined : undefined,
+      statement_end_date: type === 'credit_card' ? statementEndDate || undefined : undefined,
       due_date: type === 'credit_card' ? dueDate || undefined : undefined,
-      credit_limit:
-        type === 'credit_card' && creditLimit
-          ? parseFloat(creditLimit)
-          : undefined,
-      min_due:
-        type === 'credit_card' && minDue ? parseFloat(minDue) : undefined,
+      credit_limit: type === 'credit_card' && creditLimit ? parseFloat(creditLimit) : undefined,
+      min_due: type === 'credit_card' && minDue ? parseFloat(minDue) : undefined,
     });
 
     if (!parsed.success) {
       const errors: Record<string, string> = {};
-      parsed.error.errors.forEach((err) => {
+      parsed.error.errors.forEach(err => {
         if (err.path[0]) errors[err.path[0] as string] = err.message;
       });
       setFormErrors(errors);
@@ -213,14 +186,154 @@ export function AccountFormDialog({
 
     await onSubmit(parsed.data, editingAccount?.id);
     onOpenChange(false);
-    resetForm();
   };
 
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label>Account Name *</Label>
+        <Input
+          placeholder="My Savings Account"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          maxLength={50}
+        />
+        {formErrors.name && <p className="text-sm text-destructive">{formErrors.name}</p>}
+      </div>
+
+      <div className="space-y-2">
+        <Label>Account Type *</Label>
+        <Select value={type} onValueChange={value => setType(value as typeof type)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {accountTypes.map(t => (
+              <SelectItem key={t.value} value={t.value}>
+                <div className="flex items-center gap-2">
+                  <t.icon size={16} />
+                  {t.label}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Initial Balance</Label>
+        <Input
+          type="number"
+          placeholder="0.00"
+          value={balance}
+          onChange={e => setBalance(e.target.value)}
+          step="0.01"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Color</Label>
+        <div className="flex flex-wrap gap-2">
+          {colorOptions.map(c => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setColor(c)}
+              className={`h-8 w-8 rounded-lg transition-all ${
+                color === c ? 'scale-110 ring-2 ring-primary ring-offset-2' : ''
+              }`}
+              style={{ backgroundColor: c }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {type === 'credit_card' && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Statement Start Date *</Label>
+            <DatePicker value={statementStartDate} onChange={setStatementStartDate} />
+            {formErrors.statement_start_date && (
+              <p className="text-sm text-destructive">{formErrors.statement_start_date}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Statement End Date *</Label>
+            <DatePicker value={statementEndDate} onChange={setStatementEndDate} />
+            {formErrors.statement_end_date && (
+              <p className="text-sm text-destructive">{formErrors.statement_end_date}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Due Date *</Label>
+            <DatePicker value={dueDate} onChange={setDueDate} />
+            {formErrors.due_date && (
+              <p className="text-sm text-destructive">{formErrors.due_date}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Credit Limit *</Label>
+            <Input
+              type="number"
+              placeholder="50000"
+              value={creditLimit}
+              onChange={e => setCreditLimit(e.target.value)}
+              step="0.01"
+              min="0"
+            />
+            {formErrors.credit_limit && (
+              <p className="text-sm text-destructive">{formErrors.credit_limit}</p>
+            )}
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label>Minimum Due (optional)</Label>
+            <Input
+              type="number"
+              placeholder="Auto-calculated at 5% if left empty"
+              value={minDue}
+              onChange={e => setMinDue(e.target.value)}
+              step="0.01"
+              min="0"
+            />
+            {formErrors.min_due && <p className="text-sm text-destructive">{formErrors.min_due}</p>}
+          </div>
+        </div>
+      )}
+
+      <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {isSubmitting ? (
+          <Loader2 className="animate-spin" />
+        ) : editingAccount ? (
+          'Update Account'
+        ) : (
+          'Create Account'
+        )}
+      </Button>
+    </form>
+  );
+}
+
+export function AccountFormDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+  editingAccount,
+  isSubmitting,
+}: AccountFormDialogProps) {
+  const [formSession, setFormSession] = useState(0);
+
+  const accountLabel = useMemo(
+    () => (editingAccount ? 'Edit Account' : 'New Account'),
+    [editingAccount],
+  );
+
   const handleOpenChange = (next: boolean) => {
+    if (next) setFormSession(session => session + 1);
     onOpenChange(next);
-    if (!next) {
-      resetForm();
-    }
   };
 
   return (
@@ -229,162 +342,15 @@ export function AccountFormDialog({
         <DialogHeader>
           <DialogTitle className="font-display">{accountLabel}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Account Name *</Label>
-            <Input
-              placeholder="My Savings Account"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={50}
-            />
-            {formErrors.name && (
-              <p className="text-sm text-destructive">{formErrors.name}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label>Account Type *</Label>
-            <Select
-              value={type}
-              onValueChange={(value) => setType(value as typeof type)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {accountTypes.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    <div className="flex items-center gap-2">
-                      <t.icon size={16} />
-                      {t.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Initial Balance</Label>
-            <Input
-              type="number"
-              placeholder="0.00"
-              value={balance}
-              onChange={(e) => setBalance(e.target.value)}
-              step="0.01"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Color</Label>
-            <div className="flex gap-2 flex-wrap">
-              {colorOptions.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  className={`w-8 h-8 rounded-lg transition-all ${
-                    color === c
-                      ? 'ring-2 ring-offset-2 ring-primary scale-110'
-                      : ''
-                  }`}
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-            </div>
-          </div>
-
-          {type === 'credit_card' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Statement Start Date *</Label>
-                <Input
-                  type="date"
-                  value={statementStartDate}
-                  onChange={(e) => setStatementStartDate(e.target.value)}
-                />
-                {formErrors.statement_start_date && (
-                  <p className="text-sm text-destructive">
-                    {formErrors.statement_start_date}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Statement End Date *</Label>
-                <Input
-                  type="date"
-                  value={statementEndDate}
-                  onChange={(e) => setStatementEndDate(e.target.value)}
-                />
-                {formErrors.statement_end_date && (
-                  <p className="text-sm text-destructive">
-                    {formErrors.statement_end_date}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Due Date *</Label>
-                <Input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                />
-                {formErrors.due_date && (
-                  <p className="text-sm text-destructive">
-                    {formErrors.due_date}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Credit Limit *</Label>
-                <Input
-                  type="number"
-                  placeholder="50000"
-                  value={creditLimit}
-                  onChange={(e) => setCreditLimit(e.target.value)}
-                  step="0.01"
-                  min="0"
-                />
-                {formErrors.credit_limit && (
-                  <p className="text-sm text-destructive">
-                    {formErrors.credit_limit}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <Label>Minimum Due (optional)</Label>
-                <Input
-                  type="number"
-                  placeholder="Auto-calculated at 5% if left empty"
-                  value={minDue}
-                  onChange={(e) => setMinDue(e.target.value)}
-                  step="0.01"
-                  min="0"
-                />
-                {formErrors.min_due && (
-                  <p className="text-sm text-destructive">
-                    {formErrors.min_due}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <Loader2 className="animate-spin" />
-            ) : editingAccount ? (
-              'Update Account'
-            ) : (
-              'Create Account'
-            )}
-          </Button>
-        </form>
+        {open && (
+          <AccountForm
+            key={`${editingAccount?.id ?? 'new'}-${formSession}`}
+            editingAccount={editingAccount}
+            onSubmit={onSubmit}
+            onOpenChange={onOpenChange}
+            isSubmitting={isSubmitting}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

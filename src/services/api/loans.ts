@@ -1,10 +1,5 @@
 import { addMonths } from 'date-fns';
-import type {
-  CreateLoanData,
-  UpdateLoanData,
-  Loan,
-  EMIScheduleItem,
-} from '@/types/loan-types';
+import type { CreateLoanData, UpdateLoanData, Loan, EMIScheduleItem } from '@/types/loan-types';
 import { recurringRulesApi } from './recurring-rules';
 import { apiFetch } from '@/lib/api-client';
 
@@ -44,15 +39,10 @@ export const loansApi = {
   },
 
   getLoan: async (userId: string, loanId: string): Promise<Loan> => {
-    return apiFetch<Loan>(
-      `/api/loans/${loanId}?userId=${encodeURIComponent(userId)}`,
-    );
+    return apiFetch<Loan>(`/api/loans/${loanId}?userId=${encodeURIComponent(userId)}`);
   },
 
-  createLoan: async (
-    userId: string,
-    payload: CreateLoanData,
-  ): Promise<Loan> => {
+  createLoan: async (userId: string, payload: CreateLoanData): Promise<Loan> => {
     const loan = await apiFetch<Loan>(`/api/loans`, 'POST', {
       ...payload,
       user_id: userId,
@@ -60,10 +50,7 @@ export const loansApi = {
 
     // Auto-create recurring EMI rule
     const nextEmiDate = addMonths(new Date(payload.start_date), 1);
-    const endDate = addMonths(
-      new Date(payload.start_date),
-      payload.tenure_months,
-    );
+    const endDate = addMonths(new Date(payload.start_date), payload.tenure_months);
 
     await recurringRulesApi.createRecurringRule(userId, {
       name: `EMI - ${payload.name}`,
@@ -84,10 +71,7 @@ export const loansApi = {
     return loan;
   },
 
-  updateLoan: async (
-    userId: string,
-    { id, ...rest }: UpdateLoanData,
-  ): Promise<void> => {
+  updateLoan: async (userId: string, { id, ...rest }: UpdateLoanData): Promise<void> => {
     await apiFetch<void>(`/api/loans/${id}`, 'PUT', {
       ...rest,
       user_id: userId,
@@ -101,17 +85,10 @@ export const loansApi = {
   },
 
   getEMISchedule: (loan: Loan): EMIScheduleItem[] => {
-    return calculateEMISchedule(
-      loan.principal,
-      loan.interest_rate,
-      loan.tenure_months,
-    );
+    return calculateEMISchedule(loan.principal, loan.interest_rate, loan.tenure_months);
   },
 
-  calculateOutstandingBalance: async (
-    userId: string,
-    loanId: string,
-  ): Promise<number> => {
+  calculateOutstandingBalance: async (userId: string, loanId: string): Promise<number> => {
     const result = await apiFetch<{ outstanding: number }>(
       `/api/loans/${loanId}/outstanding?userId=${encodeURIComponent(userId)}`,
     );

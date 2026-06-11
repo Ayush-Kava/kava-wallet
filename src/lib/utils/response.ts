@@ -18,9 +18,7 @@ export const badRequestResponse = (message?: string, status: number = 400) => {
 };
 
 export const notFoundResponse = (message?: string) => {
-  const error = message
-    ? { ...ERRORS.DB_RECORD_NOT_FOUND, message }
-    : ERRORS.DB_RECORD_NOT_FOUND;
+  const error = message ? { ...ERRORS.DB_RECORD_NOT_FOUND, message } : ERRORS.DB_RECORD_NOT_FOUND;
   return NextResponse.json(
     { success: false, message: error.message },
     { status: error.httpStatus },
@@ -28,9 +26,7 @@ export const notFoundResponse = (message?: string) => {
 };
 
 export const unauthorizedResponse = (message?: string) => {
-  const error = message
-    ? { ...ERRORS.AUTH_REQUIRED, message }
-    : ERRORS.AUTH_REQUIRED;
+  const error = message ? { ...ERRORS.AUTH_REQUIRED, message } : ERRORS.AUTH_REQUIRED;
   return NextResponse.json(
     { success: false, message: error.message },
     { status: error.httpStatus },
@@ -38,9 +34,7 @@ export const unauthorizedResponse = (message?: string) => {
 };
 
 export const forbiddenResponse = (message?: string) => {
-  const error = message
-    ? { ...ERRORS.AUTH_REQUIRED, message }
-    : ERRORS.AUTH_REQUIRED;
+  const error = message ? { ...ERRORS.AUTH_REQUIRED, message } : ERRORS.AUTH_REQUIRED;
   return NextResponse.json(
     { success: false, message: error.message },
     { status: error.httpStatus },
@@ -116,8 +110,7 @@ export const validateFormDataContentType = (contentType: string) => {
       {
         success: false,
         message: ERRORS.GENERIC_BAD_REQUEST.message,
-        details:
-          'Content-Type must be multipart/form-data when uploading files.',
+        details: 'Content-Type must be multipart/form-data when uploading files.',
       },
       { status: ERRORS.GENERIC_BAD_REQUEST.httpStatus },
     );

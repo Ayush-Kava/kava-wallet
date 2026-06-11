@@ -19,7 +19,7 @@ export const calculateLedgerEntries = (
 ): LedgerEntry[] => {
   let runningBalance = openingBalance;
 
-  return transactions.map((transaction) => {
+  return transactions.map(transaction => {
     const debit = transaction.type === 'expense' ? transaction.amount : 0;
     const credit = transaction.type === 'income' ? transaction.amount : 0;
 
@@ -40,10 +40,7 @@ export const calculateLedgerEntries = (
  * @param currency - Currency code (default: INR)
  * @returns Formatted currency string
  */
-export const formatCurrency = (
-  amount: number,
-  currency: string = 'INR',
-): string => {
+export const formatCurrency = (amount: number, currency: string = 'INR'): string => {
   return Math.abs(amount).toLocaleString('en-IN', {
     style: 'currency',
     currency,
@@ -81,7 +78,7 @@ export const filterTransactionsByDateRange = (
     return transactions;
   }
 
-  return transactions.filter((transaction) => {
+  return transactions.filter(transaction => {
     const transactionDate = new Date(transaction.date);
 
     if (startDate && transactionDate < startDate) {

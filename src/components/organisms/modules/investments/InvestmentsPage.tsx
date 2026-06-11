@@ -16,35 +16,24 @@ import type {
 } from '@/types/investment-types';
 import { INVESTMENT_TYPE_LABELS } from '@/types/investment-types';
 
-const INVESTMENT_TYPES: InvestmentType[] = [
-  'mutual_fund',
-  'stock',
-  'fd',
-  'gold',
-  'crypto',
-];
+const INVESTMENT_TYPES: InvestmentType[] = ['mutual_fund', 'stock', 'fd', 'gold', 'crypto'];
 
 export default function InvestmentsPage() {
   const [formOpen, setFormOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<InvestmentType | 'all'>(
-    'all',
-  );
+  const [selectedType, setSelectedType] = useState<InvestmentType | 'all'>('all');
   const {
     investments,
     isLoading,
     createInvestment,
+    isCreatingInvestment,
     totalInvested,
     totalCurrentValue,
   } = useInvestments();
 
   const filteredInvestments =
-    selectedType === 'all'
-      ? investments
-      : investments.filter((inv) => inv.type === selectedType);
+    selectedType === 'all' ? investments : investments.filter(inv => inv.type === selectedType);
 
-  const handleCreateInvestment = async (
-    data: CreateInvestmentData | UpdateInvestmentData,
-  ) => {
+  const handleCreateInvestment = async (data: CreateInvestmentData | UpdateInvestmentData) => {
     // Only pass data that's valid for creating a new investment
     if ('id' in data) {
       // This is an update, filter out the id
@@ -57,17 +46,15 @@ export default function InvestmentsPage() {
         start_date: data.start_date!,
         notes: data.notes,
       };
-      await createInvestment.mutateAsync(createData);
+      await createInvestment(createData);
     } else {
-      await createInvestment.mutateAsync(data as CreateInvestmentData);
+      await createInvestment(data as CreateInvestmentData);
     }
   };
 
   const totalReturns = totalCurrentValue - totalInvested;
   const returnPercentage =
-    totalInvested > 0
-      ? ((totalReturns / totalInvested) * 100).toFixed(2)
-      : '0.00';
+    totalInvested > 0 ? ((totalReturns / totalInvested) * 100).toFixed(2) : '0.00';
 
   return (
     <DashboardLayout
@@ -83,43 +70,35 @@ export default function InvestmentsPage() {
       <div className="space-y-6">
         {/* Portfolio Summary */}
         <div className="grid gap-4 md:grid-cols-3">
-          <Card className="shadow-card border-border/70">
+          <Card className="border-border/70 shadow-card">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Total Invested
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">
-                ₹{totalInvested.toLocaleString('en-IN')}
-              </p>
+              <p className="text-2xl font-bold">₹{totalInvested.toLocaleString('en-IN')}</p>
             </CardContent>
           </Card>
 
-          <Card className="shadow-card border-border/70">
+          <Card className="border-border/70 shadow-card">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Current Value
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">
-                ₹{totalCurrentValue.toLocaleString('en-IN')}
-              </p>
+              <p className="text-2xl font-bold">₹{totalCurrentValue.toLocaleString('en-IN')}</p>
             </CardContent>
           </Card>
 
           <Card
-            className={`shadow-card border-border/70 ${
-              totalReturns >= 0
-                ? 'bg-green-50 dark:bg-green-950'
-                : 'bg-red-50 dark:bg-red-950'
+            className={`border-border/70 shadow-card ${
+              totalReturns >= 0 ? 'bg-green-50 dark:bg-green-950' : 'bg-red-50 dark:bg-red-950'
             }`}
           >
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Returns
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Returns</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-1">
@@ -130,8 +109,7 @@ export default function InvestmentsPage() {
                       : 'text-red-700 dark:text-red-300'
                   }`}
                 >
-                  {totalReturns >= 0 ? '+' : ''}₹
-                  {Math.abs(totalReturns).toLocaleString('en-IN')}
+                  {totalReturns >= 0 ? '+' : ''}₹{Math.abs(totalReturns).toLocaleString('en-IN')}
                 </p>
                 <p
                   className={`text-sm font-semibold ${
@@ -149,7 +127,7 @@ export default function InvestmentsPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex flex-wrap gap-2">
           <Badge
             variant={selectedType === 'all' ? 'default' : 'outline'}
             className="cursor-pointer"
@@ -157,8 +135,8 @@ export default function InvestmentsPage() {
           >
             All Types ({investments.length})
           </Badge>
-          {INVESTMENT_TYPES.map((type) => {
-            const count = investments.filter((inv) => inv.type === type).length;
+          {INVESTMENT_TYPES.map(type => {
+            const count = investments.filter(inv => inv.type === type).length;
             return (
               <Badge
                 key={type}
@@ -175,27 +153,23 @@ export default function InvestmentsPage() {
         {/* Investments Grid */}
         {isLoading ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
+            {[1, 2, 3].map(i => (
               <Card key={i} className="h-64">
-                <CardContent className="h-full bg-muted animate-pulse" />
+                <CardContent className="h-full animate-pulse bg-muted" />
               </Card>
             ))}
           </div>
         ) : filteredInvestments.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <TrendingUp className="h-12 w-12 text-muted-foreground mb-2" />
-              <p className="text-muted-foreground text-center">
+              <TrendingUp className="mb-2 h-12 w-12 text-muted-foreground" />
+              <p className="text-center text-muted-foreground">
                 {selectedType === 'all'
                   ? 'No investments yet. Start tracking your portfolio!'
                   : `No ${INVESTMENT_TYPE_LABELS[selectedType]} found.`}
               </p>
               {selectedType === 'all' && (
-                <Button
-                  onClick={() => setFormOpen(true)}
-                  className="mt-4"
-                  variant="default"
-                >
+                <Button onClick={() => setFormOpen(true)} className="mt-4" variant="default">
                   Add Your First Investment
                 </Button>
               )}
@@ -203,7 +177,7 @@ export default function InvestmentsPage() {
           </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredInvestments.map((investment) => (
+            {filteredInvestments.map(investment => (
               <InvestmentCard key={investment.id} investment={investment} />
             ))}
           </div>
@@ -214,7 +188,7 @@ export default function InvestmentsPage() {
         open={formOpen}
         onOpenChange={setFormOpen}
         onSubmit={handleCreateInvestment}
-        isSubmitting={createInvestment.isPending}
+        isSubmitting={isCreatingInvestment}
       />
     </DashboardLayout>
   );

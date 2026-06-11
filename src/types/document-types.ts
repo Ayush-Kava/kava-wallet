@@ -37,16 +37,8 @@ export interface DocumentReminder {
 }
 
 export type DocumentFileType = 'pdf' | 'image' | 'scan' | 'receipt';
-export type LinkedEntityType =
-  | 'transaction'
-  | 'credit_card'
-  | 'loan'
-  | 'emi'
-  | 'account';
-export type ReminderType =
-  | 'policy_expiry'
-  | 'statement_due'
-  | 'document_validity';
+export type LinkedEntityType = 'transaction' | 'credit_card' | 'loan' | 'emi' | 'account';
+export type ReminderType = 'policy_expiry' | 'statement_due' | 'document_validity';
 
 export interface CreateDocumentData {
   name: string;
@@ -84,3 +76,40 @@ export interface CreateDocumentReminderData {
 export interface UpdateDocumentReminderData extends Partial<CreateDocumentReminderData> {
   id: string;
 }
+
+export const toDocumentType = (doc: any): Document => ({
+  id: doc.id,
+  user_id: doc.userId,
+  name: doc.name,
+  description: doc.description,
+  file_url: doc.file_url,
+  file_type: doc.file_type,
+  file_size: doc.file_size,
+  tags: doc.tags ?? [],
+  notes: doc.notes,
+  archived: doc.archived,
+  created_at: doc.createdAt.toISOString(),
+  updated_at: doc.updatedAt.toISOString(),
+});
+
+export const toDocumentLinkType = (link: any): DocumentLink => ({
+  id: link.id,
+  document_id: link.documentId,
+  user_id: link.userId,
+  linked_entity_type: link.linked_entity_type,
+  linked_entity_id: link.linked_entity_id,
+  created_at: link.createdAt.toISOString(),
+});
+
+export const toDocumentReminderType = (reminder: any): DocumentReminder => ({
+  id: reminder.id,
+  document_id: reminder.documentId,
+  user_id: reminder.userId,
+  reminder_type: reminder.reminder_type,
+  reminder_date: reminder.reminder_date?.toISOString().split('T')[0],
+  title: reminder.title,
+  description: reminder.description,
+  completed: reminder.completed,
+  created_at: reminder.createdAt.toISOString(),
+  updated_at: reminder.updatedAt.toISOString(),
+});

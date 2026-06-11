@@ -10,7 +10,7 @@ import { apiFetch } from '@/lib/api-client';
 
 export const transactionsApi = {
   getTransactions: async (
-    userId: string,
+    _userId: string,
     page: number,
     limit: number,
     filters?: TransactionFilters,
@@ -19,90 +19,53 @@ export const transactionsApi = {
       page: String(page),
       limit: String(limit),
     });
-    params.set('userId', userId);
     if (filters?.type && filters.type !== 'Income & Expense') {
       params.set('type', filters.type.toLowerCase());
     }
-    if (filters?.account && filters.account !== 'All Accounts') {
-      params.set('account', filters.account);
+    if (filters?.accountId) {
+      params.set('accountId', filters.accountId);
     }
-    if (filters?.category && filters.category !== 'All Categories') {
-      params.set('category', filters.category);
+    if (filters?.categoryId) {
+      params.set('categoryId', filters.categoryId);
+    }
+    if (filters?.search) {
+      params.set('search', filters.search);
     }
 
-    return apiFetch<PaginatedTransactionsResult>(
-      `/api/transactions?${params.toString()}`,
-    );
+    return apiFetch<PaginatedTransactionsResult>(`/api/transactions?${params.toString()}`);
   },
 
-  createTransaction: async (
-    userId: string,
-    data: CreateTransactionData,
-  ): Promise<void> => {
-    await apiFetch<void>(`/api/transactions`, 'POST', {
-      ...data,
-      user_id: userId,
-    });
+  createTransaction: async (_userId: string, data: CreateTransactionData): Promise<void> => {
+    await apiFetch<void>(`/api/transactions`, 'POST', data);
   },
 
-  createTransfer: async (
-    userId: string,
-    data: CreateTransferData,
-  ): Promise<void> => {
-    await apiFetch<void>(`/api/transactions/transfer`, 'POST', {
-      ...data,
-      user_id: userId,
-    });
+  createTransfer: async (_userId: string, data: CreateTransferData): Promise<void> => {
+    await apiFetch<void>(`/api/transactions/transfer`, 'POST', data);
   },
 
   updateTransaction: async (
-    userId: string,
+    _userId: string,
     { id, ...data }: Partial<CreateTransactionData> & { id: string },
   ): Promise<void> => {
-    await apiFetch<void>(`/api/transactions/${id}`, 'PUT', {
-      ...data,
-      user_id: userId,
-    });
+    await apiFetch<void>(`/api/transactions/${id}`, 'PUT', data);
   },
 
-  updateTransfer: async (
-    userId: string,
-    data: UpdateTransferData,
-  ): Promise<void> => {
-    await apiFetch<void>(`/api/transactions/transfer`, 'PUT', {
-      ...data,
-      user_id: userId,
-    });
+  updateTransfer: async (_userId: string, data: UpdateTransferData): Promise<void> => {
+    await apiFetch<void>(`/api/transactions/transfer`, 'PUT', data);
   },
 
-  deleteTransaction: async (
-    userId: string,
-    id: string,
-  ): Promise<{ deletedTransfer: boolean }> => {
-    return apiFetch<{ deletedTransfer: boolean }>(
-      `/api/transactions/${id}`,
-      'DELETE',
-      { user_id: userId },
-    );
+  deleteTransaction: async (_userId: string, id: string): Promise<{ deletedTransfer: boolean }> => {
+    return apiFetch<{ deletedTransfer: boolean }>(`/api/transactions/${id}`, 'DELETE');
   },
 
   duplicateTransaction: async (
-    userId: string,
+    _userId: string,
     id: string,
   ): Promise<{ duplicatedTransfer: boolean }> => {
-    return apiFetch<{ duplicatedTransfer: boolean }>(
-      `/api/transactions/${id}/duplicate`,
-      'POST',
-      { user_id: userId },
-    );
+    return apiFetch<{ duplicatedTransfer: boolean }>(`/api/transactions/${id}/duplicate`, 'POST');
   },
 
-  getTransactionDetail: async (
-    userId: string,
-    id: string,
-  ): Promise<TransactionDetail> => {
-    return apiFetch<TransactionDetail>(
-      `/api/transactions/${id}?userId=${encodeURIComponent(userId)}`,
-    );
+  getTransactionDetail: async (_userId: string, id: string): Promise<TransactionDetail> => {
+    return apiFetch<TransactionDetail>(`/api/transactions/${id}`);
   },
 };

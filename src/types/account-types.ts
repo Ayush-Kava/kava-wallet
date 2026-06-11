@@ -41,10 +41,8 @@ export const toAccountType = (account: any): Account => ({
   currency: account.currency,
   color: account.color,
   icon: account.icon,
-  statement_start_date:
-    account.statement_start_date?.toISOString().split('T')[0] || null,
-  statement_end_date:
-    account.statement_end_date?.toISOString().split('T')[0] || null,
+  statement_start_date: account.statement_start_date?.toISOString().split('T')[0] || null,
+  statement_end_date: account.statement_end_date?.toISOString().split('T')[0] || null,
   due_date: account.due_date?.toISOString().split('T')[0] || null,
   credit_limit: account.credit_limit ? Number(account.credit_limit) : null,
   min_due: account.min_due ? Number(account.min_due) : null,

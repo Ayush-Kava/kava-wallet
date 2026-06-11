@@ -63,7 +63,7 @@ process.on('SIGTERM', async () => {
 });
 
 // Handle uncaught exceptions and promise rejections
-process.on('uncaughtException', async (error) => {
+process.on('uncaughtException', async error => {
   console.error('Uncaught Exception:', error);
   await cleanup();
   process.exit(1);

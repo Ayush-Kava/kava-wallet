@@ -12,18 +12,11 @@ import {
 import type { RecurringRule } from '@/types/recurring-types';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import {
-  ArrowRightCircle,
-  Pause,
-  PencilLine,
-  Play,
-  Trash2,
-} from 'lucide-react';
+import { ArrowRightCircle, Pause, PencilLine, Play, Trash2 } from 'lucide-react';
 
 const formatDate = (value: string) => format(new Date(value), 'dd MMM yyyy');
 
-const capitalize = (value: string) =>
-  value.charAt(0).toUpperCase() + value.slice(1);
+const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
 type RecurringRulesTableProps = {
   rules: RecurringRule[];
@@ -59,7 +52,7 @@ export function RecurringRulesTable({
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden">
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
       <Table>
         <TableHeader>
           <TableRow>
@@ -73,7 +66,7 @@ export function RecurringRulesTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rules.map((rule) => {
+          {rules.map(rule => {
             const amountLabel = new Intl.NumberFormat('en-IN', {
               style: 'currency',
               currency: 'INR',
@@ -85,18 +78,12 @@ export function RecurringRulesTable({
                 <TableCell>
                   <div className="font-medium">{rule.name}</div>
                   {rule.description && (
-                    <p className="text-xs text-muted-foreground">
-                      {rule.description}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{rule.description}</p>
                   )}
                 </TableCell>
-                <TableCell className="capitalize">
-                  {rule.type.replace('_', ' ')}
-                </TableCell>
+                <TableCell className="capitalize">{rule.type.replace('_', ' ')}</TableCell>
                 <TableCell>{amountLabel}</TableCell>
-                <TableCell className="capitalize">
-                  {capitalize(rule.frequency)}
-                </TableCell>
+                <TableCell className="capitalize">{capitalize(rule.frequency)}</TableCell>
                 <TableCell>{formatDate(rule.next_run_date)}</TableCell>
                 <TableCell>
                   {rule.paused ? (

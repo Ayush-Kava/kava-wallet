@@ -15,6 +15,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/molecules/common/DatePicker';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -29,11 +30,7 @@ import { z } from 'zod';
 import type { CreateDocumentReminderData } from '@/types/document-types';
 
 const reminderFormSchema = z.object({
-  reminder_type: z.enum([
-    'policy_expiry',
-    'statement_due',
-    'document_validity',
-  ]),
+  reminder_type: z.enum(['policy_expiry', 'statement_due', 'document_validity']),
   reminder_date: z.string(),
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
@@ -79,16 +76,11 @@ export function ReminderForm({
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle>Create Reminder</DialogTitle>
-          <DialogDescription>
-            Set a reminder for this document
-          </DialogDescription>
+          <DialogDescription>Set a reminder for this document</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-4"
-          >
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="reminder_type"
@@ -106,15 +98,9 @@ export function ReminderForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="policy_expiry">
-                        Policy Expiry
-                      </SelectItem>
-                      <SelectItem value="statement_due">
-                        Statement Due
-                      </SelectItem>
-                      <SelectItem value="document_validity">
-                        Document Validity
-                      </SelectItem>
+                      <SelectItem value="policy_expiry">Policy Expiry</SelectItem>
+                      <SelectItem value="statement_due">Statement Due</SelectItem>
+                      <SelectItem value="document_validity">Document Validity</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -129,7 +115,11 @@ export function ReminderForm({
                 <FormItem>
                   <FormLabel>Reminder Date</FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} disabled={isSubmitting} />
+                    <DatePicker
+                      value={field.value}
+                      onChange={field.onChange}
+                      disabled={isSubmitting}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

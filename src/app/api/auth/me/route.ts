@@ -1,14 +1,7 @@
 import { getUserFromSession } from '@/lib/auth';
-import {
-  successResponse,
-  internalServerErrorResponse,
-} from '@/lib/utils/response';
+import { successResponse, internalServerErrorResponse } from '@/lib/utils/response';
 
-const sanitizeUser = (user: {
-  id: string;
-  email: string;
-  fullName: string | null;
-}) => ({
+const sanitizeUser = (user: { id: string; email: string; fullName: string | null }) => ({
   id: user.id,
   email: user.email,
   full_name: user.fullName,

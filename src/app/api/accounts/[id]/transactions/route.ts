@@ -8,10 +8,7 @@ import {
 } from '@/lib/utils/response';
 import { getById, listTransactions } from '@/services/repositories/accounts';
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const user = await requireUser();

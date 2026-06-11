@@ -8,12 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,17 +20,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
+import { DatePicker } from '@/components/molecules/common/DatePicker';
 import { useAccounts } from '@/hooks/useAccounts';
 import { formatCurrency } from '@/lib/ledger-utils';
 import { differenceInCalendarDays, format } from 'date-fns';
-import {
-  CreditCard,
-  Plus,
-  Loader2,
-  Trash2,
-  Edit2,
-  ArrowRight,
-} from 'lucide-react';
+import { CreditCard, Plus, Loader2, Trash2, Edit2, ArrowRight } from 'lucide-react';
 
 const creditCardSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(50),
@@ -61,11 +50,18 @@ const colors = [
 
 export default function CreditCards() {
   const router = useRouter();
-  const { accounts, isLoading, createAccount, updateAccount, deleteAccount } =
-    useAccounts();
+  const {
+    accounts,
+    isLoading,
+    createAccount,
+    updateAccount,
+    deleteAccount,
+    isCreatingAccount,
+    isUpdatingAccount,
+  } = useAccounts();
 
   const creditCards = useMemo(
-    () => accounts.filter((account) => account.type === 'credit_card'),
+    () => accounts.filter(account => account.type === 'credit_card'),
     [accounts],
   );
 
@@ -74,7 +70,7 @@ export default function CreditCards() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmitting = isCreatingAccount || isUpdatingAccount;
 
   const [name, setName] = useState('');
   const [balance, setBalance] = useState('');
@@ -99,7 +95,7 @@ export default function CreditCards() {
   };
 
   const handleEdit = (cardId: string) => {
-    const card = creditCards.find((c) => c.id === cardId);
+    const card = creditCards.find(c => c.id === cardId);
     if (!card) return;
 
     setEditingId(card.id);
@@ -114,11 +110,7 @@ export default function CreditCards() {
         ? String(card.credit_limit)
         : '',
     );
-    setMinDue(
-      card.min_due !== null && card.min_due !== undefined
-        ? String(card.min_due)
-        : '',
-    );
+    setMinDue(card.min_due !== null && card.min_due !== undefined ? String(card.min_due) : '');
     setDialogOpen(true);
   };
 
@@ -139,59 +131,49 @@ export default function CreditCards() {
 
     if (!result.success) {
       const errors: Record<string, string> = {};
-      result.error.errors.forEach((err) => {
+      result.error.errors.forEach(err => {
         if (err.path[0]) errors[err.path[0] as string] = err.message;
       });
       setFormErrors(errors);
       return;
     }
 
-    setIsSubmitting(true);
-
     if (editingId) {
-      await updateAccount.mutateAsync({
+      await updateAccount({
         id: editingId,
         type: 'credit_card',
         ...result.data,
       });
     } else {
-      await createAccount.mutateAsync({ type: 'credit_card', ...result.data });
+      await createAccount({ type: 'credit_card', ...result.data });
     }
 
-    setIsSubmitting(false);
     setDialogOpen(false);
     resetForm();
   };
 
   const handleDelete = async () => {
     if (!selectedId) return;
-    await deleteAccount.mutateAsync(selectedId);
+    await deleteAccount(selectedId);
     setDeleteDialogOpen(false);
     setSelectedId(null);
   };
 
-  const totalCreditLimit = creditCards.reduce(
-    (sum, card) => sum + (card.credit_limit || 0),
-    0,
-  );
+  const totalCreditLimit = creditCards.reduce((sum, card) => sum + (card.credit_limit || 0), 0);
 
   const upcomingDue = useMemo(() => {
-    const withDueDate = creditCards.filter((card) => card.due_date);
+    const withDueDate = creditCards.filter(card => card.due_date);
     if (!withDueDate.length) return null;
 
     return withDueDate.sort(
-      (a, b) =>
-        new Date(a.due_date || '').getTime() -
-        new Date(b.due_date || '').getTime(),
+      (a, b) => new Date(a.due_date || '').getTime() - new Date(b.due_date || '').getTime(),
     )[0];
   }, [creditCards]);
 
   const totalAvailable = creditCards.reduce((sum, card) => {
     const limit = card.credit_limit || 0;
     const balanceValue = Number(card.balance || 0);
-    return (
-      sum + (limit - (balanceValue < 0 ? Math.abs(balanceValue) : balanceValue))
-    );
+    return sum + (limit - (balanceValue < 0 ? Math.abs(balanceValue) : balanceValue));
   }, 0);
 
   return (
@@ -199,10 +181,7 @@ export default function CreditCards() {
       title="Credit Cards"
       description="Track your cards, statement cycles, and dues."
       actions={
-        <Button
-          onClick={() => setDialogOpen(true)}
-          className="inline-flex items-center gap-2"
-        >
+        <Button onClick={() => setDialogOpen(true)} className="inline-flex items-center gap-2">
           <Plus size={18} /> Add Credit Card
         </Button>
       }
@@ -210,7 +189,7 @@ export default function CreditCards() {
       <div className="space-y-6">
         <Dialog
           open={dialogOpen}
-          onOpenChange={(open) => {
+          onOpenChange={open => {
             setDialogOpen(open);
             if (!open) resetForm();
           }}
@@ -227,12 +206,10 @@ export default function CreditCards() {
                 <Input
                   placeholder="HDFC Millennia"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={e => setName(e.target.value)}
                   maxLength={50}
                 />
-                {formErrors.name && (
-                  <p className="text-sm text-destructive">{formErrors.name}</p>
-                )}
+                {formErrors.name && <p className="text-sm text-destructive">{formErrors.name}</p>}
               </div>
 
               <div className="space-y-2">
@@ -241,23 +218,21 @@ export default function CreditCards() {
                   type="number"
                   placeholder="0.00"
                   value={balance}
-                  onChange={(e) => setBalance(e.target.value)}
+                  onChange={e => setBalance(e.target.value)}
                   step="0.01"
                 />
               </div>
 
               <div className="space-y-2">
                 <Label>Color</Label>
-                <div className="flex gap-2 flex-wrap">
-                  {colors.map((c) => (
+                <div className="flex flex-wrap gap-2">
+                  {colors.map(c => (
                     <button
                       key={c}
                       type="button"
                       onClick={() => setColor(c)}
-                      className={`w-8 h-8 rounded-lg transition-all ${
-                        color === c
-                          ? 'ring-2 ring-offset-2 ring-primary scale-110'
-                          : ''
+                      className={`h-8 w-8 rounded-lg transition-all ${
+                        color === c ? 'scale-110 ring-2 ring-primary ring-offset-2' : ''
                       }`}
                       style={{ backgroundColor: c }}
                     />
@@ -265,46 +240,28 @@ export default function CreditCards() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Statement Start Date *</Label>
-                  <Input
-                    type="date"
-                    value={statementStart}
-                    onChange={(e) => setStatementStart(e.target.value)}
-                  />
+                  <DatePicker value={statementStart} onChange={setStatementStart} />
                   {formErrors.statement_start_date && (
-                    <p className="text-sm text-destructive">
-                      {formErrors.statement_start_date}
-                    </p>
+                    <p className="text-sm text-destructive">{formErrors.statement_start_date}</p>
                   )}
                 </div>
 
                 <div className="space-y-2">
                   <Label>Statement End Date *</Label>
-                  <Input
-                    type="date"
-                    value={statementEnd}
-                    onChange={(e) => setStatementEnd(e.target.value)}
-                  />
+                  <DatePicker value={statementEnd} onChange={setStatementEnd} />
                   {formErrors.statement_end_date && (
-                    <p className="text-sm text-destructive">
-                      {formErrors.statement_end_date}
-                    </p>
+                    <p className="text-sm text-destructive">{formErrors.statement_end_date}</p>
                   )}
                 </div>
 
                 <div className="space-y-2">
                   <Label>Due Date *</Label>
-                  <Input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                  />
+                  <DatePicker value={dueDate} onChange={setDueDate} />
                   {formErrors.due_date && (
-                    <p className="text-sm text-destructive">
-                      {formErrors.due_date}
-                    </p>
+                    <p className="text-sm text-destructive">{formErrors.due_date}</p>
                   )}
                 </div>
 
@@ -314,14 +271,12 @@ export default function CreditCards() {
                     type="number"
                     placeholder="50000"
                     value={creditLimit}
-                    onChange={(e) => setCreditLimit(e.target.value)}
+                    onChange={e => setCreditLimit(e.target.value)}
                     step="0.01"
                     min="0"
                   />
                   {formErrors.credit_limit && (
-                    <p className="text-sm text-destructive">
-                      {formErrors.credit_limit}
-                    </p>
+                    <p className="text-sm text-destructive">{formErrors.credit_limit}</p>
                   )}
                 </div>
 
@@ -331,14 +286,12 @@ export default function CreditCards() {
                     type="number"
                     placeholder="Auto-calculated at 5% if empty"
                     value={minDue}
-                    onChange={(e) => setMinDue(e.target.value)}
+                    onChange={e => setMinDue(e.target.value)}
                     step="0.01"
                     min="0"
                   />
                   {formErrors.min_due && (
-                    <p className="text-sm text-destructive">
-                      {formErrors.min_due}
-                    </p>
+                    <p className="text-sm text-destructive">{formErrors.min_due}</p>
                   )}
                 </div>
               </div>
@@ -356,49 +309,37 @@ export default function CreditCards() {
           </DialogContent>
         </Dialog>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="shadow-card border-0">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <Card className="border-0 shadow-card">
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Cards</p>
-              <p className="text-2xl font-display font-bold">
-                {creditCards.length}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Total credit cards linked
-              </p>
+              <p className="font-display text-2xl font-bold">{creditCards.length}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Total credit cards linked</p>
             </CardContent>
           </Card>
-          <Card className="shadow-card border-0">
+          <Card className="border-0 shadow-card">
             <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">
-                Total Credit Limit
-              </p>
-              <p className="text-2xl font-display font-bold">
+              <p className="text-sm text-muted-foreground">Total Credit Limit</p>
+              <p className="font-display text-2xl font-bold">
                 {formatCurrency(totalCreditLimit || 0, 'INR')}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Sum of all limits
-              </p>
+              <p className="mt-1 text-xs text-muted-foreground">Sum of all limits</p>
             </CardContent>
           </Card>
-          <Card className="shadow-card border-0">
+          <Card className="border-0 shadow-card">
             <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">
-                Available (approx)
-              </p>
-              <p className="text-2xl font-display font-bold">
+              <p className="text-sm text-muted-foreground">Available (approx)</p>
+              <p className="font-display text-2xl font-bold">
                 {formatCurrency(totalAvailable || 0, 'INR')}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Based on limits minus balances
-              </p>
+              <p className="mt-1 text-xs text-muted-foreground">Based on limits minus balances</p>
             </CardContent>
           </Card>
         </div>
 
         {upcomingDue && (
-          <Card className="shadow-card border border-primary/30 bg-primary/5">
-            <CardContent className="pt-6 flex items-center justify-between gap-4 flex-wrap">
+          <Card className="border border-primary/30 bg-primary/5 shadow-card">
+            <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-6">
               <div>
                 <p className="text-sm text-muted-foreground">Next due</p>
                 <p className="text-lg font-semibold">{upcomingDue.name}</p>
@@ -419,7 +360,7 @@ export default function CreditCards() {
                 })()}
               </Badge>
               <Button
-                onClick={() => router.push(`/credit-cards/${upcomingDue.id}`)}
+                onClick={() => router.push(`/app/credit-cards/${upcomingDue.id}`)}
                 variant="secondary"
               >
                 View details
@@ -428,7 +369,7 @@ export default function CreditCards() {
           </Card>
         )}
 
-        <Card className="shadow-card border-0">
+        <Card className="border-0 shadow-card">
           <CardHeader>
             <CardTitle className="font-display">Your Cards</CardTitle>
           </CardHeader>
@@ -438,78 +379,67 @@ export default function CreditCards() {
                 <Loader2 className="animate-spin text-primary" size={32} />
               </div>
             ) : creditCards.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
+              <div className="py-12 text-center text-muted-foreground">
                 <CreditCard size={48} className="mx-auto mb-4 opacity-50" />
-                <p className="mb-4">
-                  No credit cards yet. Add your first card to get started.
-                </p>
+                <p className="mb-4">No credit cards yet. Add your first card to get started.</p>
                 <Button onClick={() => setDialogOpen(true)}>
                   <Plus size={18} /> Add Credit Card
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {creditCards.map((card) => {
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {creditCards.map(card => {
                   const dueText = card.due_date
                     ? format(new Date(card.due_date), 'dd MMM')
                     : 'No due date';
                   const available =
-                    card.credit_limit !== null &&
-                    card.credit_limit !== undefined
+                    card.credit_limit !== null && card.credit_limit !== undefined
                       ? card.credit_limit + Number(card.balance || 0)
                       : null;
 
                   return (
                     <div
                       key={card.id}
-                      className="p-4 rounded-xl border border-border hover:shadow-lg transition-all group relative overflow-hidden"
+                      className="group relative overflow-hidden rounded-xl border border-border p-4 transition-all hover:shadow-lg"
                       style={{ borderColor: `${card.color || '#10B981'}40` }}
                     >
                       <div
-                        className="absolute top-0 left-0 w-full h-1"
+                        className="absolute left-0 top-0 h-1 w-full"
                         style={{ backgroundColor: card.color || '#10B981' }}
                       />
                       <div className="flex items-start justify-between">
                         <div>
-                          <p className="font-semibold flex items-center gap-2">
+                          <p className="flex items-center gap-2 font-semibold">
                             <CreditCard size={16} /> {card.name}
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            Due {dueText}
-                          </p>
+                          <p className="text-xs text-muted-foreground">Due {dueText}</p>
                           {card.credit_limit && (
                             <p className="text-xs text-muted-foreground">
-                              Limit{' '}
-                              {formatCurrency(card.credit_limit, card.currency)}
+                              Limit {formatCurrency(card.credit_limit, card.currency)}
                             </p>
                           )}
                         </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                           <button
-                            onClick={() =>
-                              router.push(`/credit-cards/${card.id}`)
-                            }
-                            className="p-2 rounded-lg hover:bg-muted transition-colors"
+                            onClick={() => router.push(`/app/credit-cards/${card.id}`)}
+                            className="rounded-lg p-2 transition-colors hover:bg-muted"
                             aria-label="View card"
                           >
                             <ArrowRight size={16} />
                           </button>
                           <button
                             onClick={() => handleEdit(card.id)}
-                            className="p-2 rounded-lg hover:bg-muted transition-colors"
+                            className="rounded-lg p-2 transition-colors hover:bg-muted"
                             aria-label="Edit card"
                           >
-                            <Edit2
-                              size={16}
-                              className="text-muted-foreground"
-                            />
+                            <Edit2 size={16} className="text-muted-foreground" />
                           </button>
                           <button
                             onClick={() => {
                               setSelectedId(card.id);
                               setDeleteDialogOpen(true);
                             }}
-                            className="p-2 rounded-lg hover:bg-destructive/10 transition-colors"
+                            className="rounded-lg p-2 transition-colors hover:bg-destructive/10"
                             aria-label="Delete card"
                           >
                             <Trash2 size={16} className="text-destructive" />
@@ -517,19 +447,13 @@ export default function CreditCards() {
                         </div>
                       </div>
                       <div className="mt-4 space-y-1">
-                        <p className="text-2xl font-bold font-display">
-                          {formatCurrency(
-                            Number(card.balance || 0),
-                            card.currency,
-                          )}
+                        <p className="font-display text-2xl font-bold">
+                          {formatCurrency(Number(card.balance || 0), card.currency)}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          Current balance
-                        </p>
+                        <p className="text-xs text-muted-foreground">Current balance</p>
                         {available !== null && (
                           <p className="text-xs text-muted-foreground">
-                            Approx available{' '}
-                            {formatCurrency(available, card.currency)}
+                            Approx available {formatCurrency(available, card.currency)}
                           </p>
                         )}
                       </div>
@@ -547,8 +471,8 @@ export default function CreditCards() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Credit Card?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this credit card account and all
-              associated transactions. This action cannot be undone.
+              This will permanently delete this credit card account and all associated transactions.
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

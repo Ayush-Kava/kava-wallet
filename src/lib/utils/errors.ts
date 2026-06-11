@@ -37,12 +37,7 @@ export const ERRORS: Record<string, AppError> = {
   },
 };
 
-export const toAppError = (
-  error: AppError | string,
-  fallback?: AppError,
-): AppError => {
+export const toAppError = (error: AppError | string, fallback?: AppError): AppError => {
   if (typeof error !== 'string') return error;
-  return (
-    fallback ?? { code: 'GENERIC_BAD_REQUEST', message: error, httpStatus: 400 }
-  );
+  return fallback ?? { code: 'GENERIC_BAD_REQUEST', message: error, httpStatus: 400 };
 };

@@ -12,7 +12,7 @@
    * #C9A227 - Gold (primary)
    * #EAEAEA - Light gray (foreground)
    */
-  
+
   :root {
     /* Dark mode as default */
     --background: 216 31% 6%;
@@ -68,7 +68,12 @@
     --gradient-accent: linear-gradient(135deg, hsl(45, 69%, 47%) 0%, hsl(50, 80%, 55%) 100%);
     --gradient-dark: linear-gradient(135deg, hsl(216, 31%, 6%) 0%, hsl(220, 17%, 13%) 100%);
     --gradient-glass: linear-gradient(135deg, rgba(28, 31, 38, 0.9) 0%, rgba(28, 31, 38, 0.7) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(45, 69%, 47%) 0%, hsl(40, 65%, 40%) 50%, hsl(225, 19%, 22%) 100%);
+    --gradient-hero: linear-gradient(
+      135deg,
+      hsl(45, 69%, 47%) 0%,
+      hsl(40, 65%, 40%) 50%,
+      hsl(225, 19%, 22%) 100%
+    );
 
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.2);
@@ -124,7 +129,11 @@
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 45 69% 47%;
 
-    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+    --gradient-glass: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.9) 0%,
+      rgba(255, 255, 255, 0.7) 100%
+    );
     --shadow-card: 0 4px 20px hsl(220 25% 10% / 0.08);
   }
 }
@@ -139,18 +148,23 @@
     font-family: 'Outfit', sans-serif;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: 'Outfit', sans-serif;
   }
 }
 
 @layer utilities {
   .glass {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+    @apply border border-border/50 bg-card/80 backdrop-blur-xl;
   }
 
   .glass-strong {
-    @apply bg-card/95 backdrop-blur-2xl border border-border/50;
+    @apply border border-border/50 bg-card/95 backdrop-blur-2xl;
   }
 
   .gradient-primary {
@@ -200,7 +214,8 @@
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px);
   }
   50% {
@@ -235,20 +250,20 @@
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-muted/50 rounded-full;
+  @apply rounded-full bg-muted/50;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/30 rounded-full hover:bg-muted-foreground/50 transition-colors;
+  @apply rounded-full bg-muted-foreground/30 transition-colors hover:bg-muted-foreground/50;
 }
 
 /* Number input without spinners */
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-input[type="number"] {
+input[type='number'] {
   -moz-appearance: textfield;
 }

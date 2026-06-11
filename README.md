@@ -1,73 +1,62 @@
-# Welcome to your Lovable project
+# Kava Wallet
 
-## Project info
+Personal finance web app for tracking accounts, transactions, budgets, goals, loans, investments, recurring rules, and documents.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Stack
 
-## How can I edit this code?
+- **Next.js 15** (App Router) + React 18 + TypeScript
+- **Prisma** + PostgreSQL
+- **TanStack Query** + **Zustand** for state
+- **Zod** for validation
+- **Tailwind CSS** + shadcn/ui
+- **Cloudflare R2** for document uploads (presigned URLs)
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Getting started
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
+cp .env.example .env
+# Set POSTGRES_URL and R2 credentials in .env
+npm run prisma:generate
+npm run prisma:migrate
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Open [http://localhost:3000](http://localhost:3000).
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Environment variables
 
-**Use GitHub Codespaces**
+See [`.env.example`](.env.example):
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+| Variable               | Description                        |
+| ---------------------- | ---------------------------------- |
+| `POSTGRES_URL`         | PostgreSQL connection string       |
+| `R2_ACCOUNT_ID`        | Cloudflare account ID              |
+| `R2_ACCESS_KEY_ID`     | R2 API key                         |
+| `R2_SECRET_ACCESS_KEY` | R2 API secret                      |
+| `R2_BUCKET_NAME`       | R2 bucket name                     |
+| `R2_PUBLIC_URL`        | Public base URL for uploaded files |
 
-## What technologies are used for this project?
+## Project structure
 
-This project is built with:
+```
+src/
+├── app/
+│   ├── (branding)/     # Landing (/) and auth (/auth)
+│   ├── app/            # Authenticated app (/app/*)
+│   └── api/            # API routes
+├── components/         # Atomic design (atoms/molecules/organisms)
+├── store/              # Zustand stores (ui, filters)
+├── lib/                # Utils, validation, money engine
+├── services/           # API clients + Prisma repositories
+└── hooks/
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Scripts
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+| Command                  | Description             |
+| ------------------------ | ----------------------- |
+| `npm run dev`            | Start dev server        |
+| `npm run build`          | Production build        |
+| `npm run prisma:migrate` | Run database migrations |
+| `npm run prisma:studio`  | Open Prisma Studio      |

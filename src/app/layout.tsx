@@ -1,19 +1,22 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { Providers } from '@/components/organisms/providers/Providers';
-import { Toaster } from '@/components/ui/toaster';
-import { Toaster as Sonner } from '@/components/ui/sonner';
+import { NotificationToaster } from '@/components/molecules/common/Notification';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-sans',
+});
 
 export const metadata: Metadata = {
-  title: 'KavaFlow - Smart Money Management',
+  title: 'Kava Wallet - Smart Money Management',
   description:
     'Track expenses, manage budgets, and grow your wealth with our intuitive money management platform.',
   authors: [{ name: 'Kava Group of Companies' }],
   openGraph: {
-    title: 'KavaFlow - Smart Money Management',
+    title: 'Kava Wallet - Smart Money Management',
     description:
       'Track expenses, manage budgets, and grow your wealth with our intuitive money management platform.',
     type: 'website',
@@ -26,12 +29,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+    <html lang="en" suppressHydrationWarning className={inter.variable}>
+      <body className={`${inter.className} font-sans`}>
         <Providers>
           {children}
-          <Toaster />
-          <Sonner />
+          <NotificationToaster />
         </Providers>
       </body>
     </html>

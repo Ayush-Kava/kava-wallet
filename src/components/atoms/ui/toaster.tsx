@@ -30,9 +30,11 @@ export function Toaster() {
   const { toasts } = useToast();
 
   return (
-    <ToastProvider>
+    <ToastProvider duration={5000}>
       {toasts.map(function ({ id, title, description, action, ...props }) {
-        const intent = (props as any).dataIntent ?? 'info';
+        const intent =
+          (props as { dataIntent?: keyof typeof intentIcon }).dataIntent ??
+          (props.variant === 'destructive' ? 'error' : 'success');
         const intentKey = intent as keyof typeof intentIcon;
         const fallback = TOAST_COPY[intentKey] ?? TOAST_COPY.info;
         const icon = intentIcon[intentKey] ?? intentIcon.info;
@@ -47,9 +49,7 @@ export function Toaster() {
               <div className="grid gap-1">
                 <ToastTitle>{title ?? fallback.title}</ToastTitle>
                 {(description ?? fallback.description) && (
-                  <ToastDescription>
-                    {description ?? fallback.description}
-                  </ToastDescription>
+                  <ToastDescription>{description ?? fallback.description}</ToastDescription>
                 )}
               </div>
             </div>

@@ -23,10 +23,7 @@ import { useInvestments } from '@/hooks/useInvestments';
 import { useAuth } from '@/contexts/AuthContext';
 import { documentsApi } from '@/services/api/documents';
 import { useQuery } from '@tanstack/react-query';
-import type {
-  CreateInvestmentData,
-  UpdateInvestmentData,
-} from '@/types/investment-types';
+import type { CreateInvestmentData, UpdateInvestmentData } from '@/types/investment-types';
 import { INVESTMENT_TYPE_LABELS } from '@/types/investment-types';
 import {
   ArrowLeft,
@@ -44,13 +41,16 @@ interface InvestmentDetailProps {
   investmentId: string;
 }
 
-export default function InvestmentDetail({
-  investmentId,
-}: InvestmentDetailProps) {
+export default function InvestmentDetail({ investmentId }: InvestmentDetailProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const { useInvestment, updateInvestment, deleteInvestment } =
-    useInvestments();
+  const {
+    useInvestment,
+    updateInvestment,
+    deleteInvestment,
+    isUpdatingInvestment,
+    isDeletingInvestment,
+  } = useInvestments();
   const { data: investment, isLoading } = useInvestment(investmentId);
 
   const [editOpen, setEditOpen] = useState(false);
@@ -59,15 +59,12 @@ export default function InvestmentDetail({
   // Fetch linked documents
   const { data: linkedDocuments = [], isLoading: documentsLoading } = useQuery({
     queryKey: ['investment-documents', investmentId, user?.id],
-    queryFn: () =>
-      documentsApi.getDocumentsByLinkedEntity(user!.id, investmentId),
+    queryFn: () => documentsApi.getDocumentsByLinkedEntity(user!.id, investmentId),
     enabled: !!user && !!investmentId,
   });
 
-  const handleUpdate = async (
-    data: CreateInvestmentData | UpdateInvestmentData,
-  ) => {
-    await updateInvestment.mutateAsync({
+  const handleUpdate = async (data: CreateInvestmentData | UpdateInvestmentData) => {
+    await updateInvestment({
       id: investmentId,
       ...data,
     } as UpdateInvestmentData);
@@ -75,16 +72,15 @@ export default function InvestmentDetail({
   };
 
   const handleDelete = async () => {
-    await deleteInvestment.mutateAsync(investmentId);
-    router.push('/investments');
+    await deleteInvestment(investmentId);
+    router.push('/app/investments');
   };
 
   if (isLoading || !investment) {
     return (
       <DashboardLayout title="Investment Details" description="Loading…">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading investment
-          details…
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading investment details…
         </div>
       </DashboardLayout>
     );
@@ -101,7 +97,7 @@ export default function InvestmentDetail({
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link href="/investments" className="gap-2">
+            <Link href="/app/investments" className="gap-2">
               <ArrowLeft size={16} /> Back
             </Link>
           </Button>
@@ -109,7 +105,7 @@ export default function InvestmentDetail({
             variant="outline"
             size="sm"
             onClick={() => setEditOpen(true)}
-            disabled={updateInvestment.isPending}
+            disabled={isUpdatingInvestment}
             className="gap-2"
           >
             <Pencil size={16} /> Edit
@@ -118,7 +114,7 @@ export default function InvestmentDetail({
             variant="destructive"
             size="sm"
             onClick={() => setDeleteOpen(true)}
-            disabled={deleteInvestment.isPending}
+            disabled={isDeletingInvestment}
             className="gap-2"
           >
             <Trash2 size={16} /> Delete
@@ -128,18 +124,12 @@ export default function InvestmentDetail({
     >
       <div className="space-y-5">
         {/* Main Details Card */}
-        <Card className="shadow-card border-border/70">
+        <Card className="border-border/70 shadow-card">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="font-display text-xl">
-                Investment Overview
-              </CardTitle>
+              <CardTitle className="font-display text-xl">Investment Overview</CardTitle>
               <Badge>
-                {
-                  INVESTMENT_TYPE_LABELS[
-                    investment.type as keyof typeof INVESTMENT_TYPE_LABELS
-                  ]
-                }
+                {INVESTMENT_TYPE_LABELS[investment.type as keyof typeof INVESTMENT_TYPE_LABELS]}
               </Badge>
             </div>
           </CardHeader>
@@ -163,12 +153,11 @@ export default function InvestmentDetail({
                 <p
                   className={`text-lg font-semibold ${isPositive ? 'text-green-600' : 'text-red-600'}`}
                 >
-                  {isPositive ? '+' : ''}₹
-                  {Math.abs(returns).toLocaleString('en-IN')}
+                  {isPositive ? '+' : ''}₹{Math.abs(returns).toLocaleString('en-IN')}
                 </p>
               </div>
               <div
-                className={`p-3 rounded-lg ${isPositive ? 'bg-green-50 dark:bg-green-950' : 'bg-red-50 dark:bg-red-950'}`}
+                className={`rounded-lg p-3 ${isPositive ? 'bg-green-50 dark:bg-green-950' : 'bg-red-50 dark:bg-red-950'}`}
               >
                 <p
                   className={`text-xs font-semibold ${isPositive ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}
@@ -176,13 +165,9 @@ export default function InvestmentDetail({
                   Return %
                 </p>
                 <p
-                  className={`text-lg font-semibold flex items-center gap-1 ${isPositive ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}
+                  className={`flex items-center gap-1 text-lg font-semibold ${isPositive ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}
                 >
-                  {isPositive ? (
-                    <TrendingUp size={16} />
-                  ) : (
-                    <TrendingDown size={16} />
-                  )}
+                  {isPositive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
                   {isPositive ? '+' : ''}
                   {returnPercentage.toFixed(2)}%
                 </p>
@@ -195,15 +180,11 @@ export default function InvestmentDetail({
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Account</p>
-                <p className="font-medium">
-                  {investment.accounts?.name || 'Unknown Account'}
-                </p>
+                <p className="font-medium">{investment.accounts?.name || 'Unknown Account'}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Start Date</p>
-                <p className="font-medium">
-                  {formatDateStr(investment.start_date)}
-                </p>
+                <p className="font-medium">{formatDateStr(investment.start_date)}</p>
               </div>
             </div>
 
@@ -220,9 +201,9 @@ export default function InvestmentDetail({
         </Card>
 
         {/* Linked Documents Section */}
-        <Card className="shadow-card border-border/70">
+        <Card className="border-border/70 shadow-card">
           <CardHeader>
-            <CardTitle className="font-display text-base flex items-center gap-2">
+            <CardTitle className="font-display flex items-center gap-2 text-base">
               <FileText size={18} />
               Linked Documents
             </CardTitle>
@@ -235,32 +216,25 @@ export default function InvestmentDetail({
               </div>
             ) : linkedDocuments.length > 0 ? (
               <div className="space-y-3">
-                {linkedDocuments.map((doc) => (
+                {linkedDocuments.map(doc => (
                   <div
                     key={doc.id}
-                    className="flex items-start justify-between p-3 bg-muted/50 rounded-lg border border-border/50"
+                    className="flex items-start justify-between rounded-lg border border-border/50 bg-muted/50 p-3"
                   >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{doc.name}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{doc.name}</p>
                       {doc.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                           {doc.description}
                         </p>
                       )}
-                      <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                      <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                         <span>{doc.file_type.toUpperCase()}</span>
                         <span>•</span>
-                        <span>
-                          {(doc.file_size / 1024 / 1024).toFixed(2)} MB
-                        </span>
+                        <span>{(doc.file_size / 1024 / 1024).toFixed(2)} MB</span>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      asChild
-                      className="ml-2 flex-shrink-0"
-                    >
+                    <Button variant="ghost" size="sm" asChild className="ml-2 flex-shrink-0">
                       <a
                         href={doc.file_url}
                         target="_blank"
@@ -274,9 +248,7 @@ export default function InvestmentDetail({
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground">
-                No documents linked to this investment.
-              </p>
+              <p className="text-muted-foreground">No documents linked to this investment.</p>
             )}
           </CardContent>
         </Card>
@@ -287,7 +259,7 @@ export default function InvestmentDetail({
         open={editOpen}
         onOpenChange={setEditOpen}
         onSubmit={handleUpdate}
-        isSubmitting={updateInvestment.isPending}
+        isSubmitting={isUpdatingInvestment}
         initialData={investment}
         mode="edit"
       />
@@ -298,8 +270,7 @@ export default function InvestmentDetail({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Investment</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this investment? This action
-              cannot be undone.
+              Are you sure you want to delete this investment? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -308,11 +279,7 @@ export default function InvestmentDetail({
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteInvestment.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                'Delete'
-              )}
+              {isDeletingInvestment ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

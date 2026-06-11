@@ -52,8 +52,7 @@ export function PaginatedTable<T extends { id: string }>({
   const isControlled = externalPage !== undefined && onPageChange !== undefined;
 
   // Calculate pagination values
-  const totalPages =
-    externalTotalPages ?? Math.ceil(data.length / itemsPerPage);
+  const totalPages = externalTotalPages ?? Math.ceil(data.length / itemsPerPage);
   const totalCount = externalTotalCount ?? data.length;
 
   // For server-side pagination, use data as-is. For client-side, slice it
@@ -134,7 +133,7 @@ export function PaginatedTable<T extends { id: string }>({
   };
 
   return (
-    <div className="bg-card shadow-card border-0 rounded-xl overflow-hidden">
+    <div className="overflow-hidden rounded-xl border-0 bg-card shadow-card">
       <Table>
         <TableHeader className="bg-muted">
           <TableRow>
@@ -150,12 +149,12 @@ export function PaginatedTable<T extends { id: string }>({
                 <TableRow key={i}>
                   {columns.map((_, colIdx) => (
                     <TableCell key={colIdx}>
-                      <div className="h-4 bg-muted rounded animate-pulse" />
+                      <div className="h-4 animate-pulse rounded bg-muted" />
                     </TableCell>
                   ))}
                 </TableRow>
               ))
-            : displayData.map((item) => (
+            : displayData.map(item => (
                 <TableRow key={item.id}>
                   {columns.map((column, colIdx) => (
                     <TableCell key={colIdx} className={column.className}>
@@ -173,10 +172,8 @@ export function PaginatedTable<T extends { id: string }>({
           <div className="flex items-center justify-between px-4 py-4">
             <div className="flex items-center gap-8">
               <div className="text-sm text-muted-foreground">
-                Showing{' '}
-                {data.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to{' '}
-                {Math.min(currentPage * itemsPerPage, totalCount)} of{' '}
-                {totalCount}
+                Showing {data.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to{' '}
+                {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount}
               </div>
               {footerContent && footerContent({})}
             </div>
@@ -198,9 +195,7 @@ export function PaginatedTable<T extends { id: string }>({
                   key={idx}
                   variant={page === currentPage ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() =>
-                    typeof page === 'number' && handlePageClick(page)
-                  }
+                  onClick={() => typeof page === 'number' && handlePageClick(page)}
                   disabled={typeof page !== 'number' || isLoading}
                   className="h-8 min-w-8 px-2"
                 >

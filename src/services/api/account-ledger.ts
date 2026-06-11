@@ -3,19 +3,13 @@ import type { Transaction } from '@/types/transaction-types';
 import { apiFetch } from '@/lib/api-client';
 
 export const accountLedgerApi = {
-  getAccount: async (
-    userId: string,
-    accountId: string,
-  ): Promise<Account | null> => {
+  getAccount: async (userId: string, accountId: string): Promise<Account | null> => {
     return apiFetch<Account | null>(
       `/api/accounts/${accountId}?userId=${encodeURIComponent(userId)}`,
     );
   },
 
-  getAccountTransactions: async (
-    userId: string,
-    accountId: string,
-  ): Promise<Transaction[]> => {
+  getAccountTransactions: async (userId: string, accountId: string): Promise<Transaction[]> => {
     return apiFetch<Transaction[]>(
       `/api/accounts/${accountId}/transactions?userId=${encodeURIComponent(userId)}`,
     );

@@ -1,32 +1,35 @@
 'use client';
 
 import { DateRangeCalendar } from '@/components/molecules/common/DateRangeCalendar';
-import {
-  DropdownButton,
-  type DropdownButtonItem,
-} from '@/components/atoms/DropdownButton';
-import { Input } from '@/components/atoms/ui/input';
+import { SearchInput } from '@/components/molecules/common/SearchInput';
+import { DropdownButton, type DropdownButtonItem } from '@/components/atoms/DropdownButton';
 import { Button } from '@/components/atoms/ui/button';
 import { ChevronDown } from 'lucide-react';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useCategories } from '@/hooks/useCategories';
 
 type TransactionsFiltersProps = {
-  selectedAccount: string;
-  selectedCategory: string;
+  selectedAccountId: string | null;
+  selectedCategoryId: string | null;
   selectedType: 'Income & Expense' | 'Income' | 'Expense';
-  onAccountChange: (value: string) => void;
-  onCategoryChange: (value: string) => void;
+  search: string;
+  onAccountChange: (id: string | null, label: string) => void;
+  onCategoryChange: (id: string | null, label: string) => void;
   onTypeChange: (value: 'Income & Expense' | 'Income' | 'Expense') => void;
+  onSearchChange: (value: string) => void;
+  accountLabel: string;
+  categoryLabel: string;
 };
 
 export default function TransactionsFilters({
-  selectedAccount,
-  selectedCategory,
   selectedType,
+  search,
   onAccountChange,
   onCategoryChange,
   onTypeChange,
+  onSearchChange,
+  accountLabel,
+  categoryLabel,
 }: TransactionsFiltersProps) {
   const { accounts } = useAccounts();
   const { categories } = useCategories();
@@ -35,12 +38,12 @@ export default function TransactionsFilters({
     {
       id: 'all-accounts',
       label: 'All Accounts',
-      onClick: () => onAccountChange('All Accounts'),
+      onClick: () => onAccountChange(null, 'All Accounts'),
     },
-    ...(accounts || []).map((account) => ({
+    ...(accounts || []).map(account => ({
       id: account.id,
       label: account.name,
-      onClick: () => onAccountChange(account.name),
+      onClick: () => onAccountChange(account.id, account.name),
     })),
   ];
 
@@ -48,12 +51,12 @@ export default function TransactionsFilters({
     {
       id: 'all-categories',
       label: 'All Categories',
-      onClick: () => onCategoryChange('All Categories'),
+      onClick: () => onCategoryChange(null, 'All Categories'),
     },
-    ...(categories || []).map((category) => ({
+    ...(categories || []).map(category => ({
       id: category.id,
       label: category.name,
-      onClick: () => onCategoryChange(category.name),
+      onClick: () => onCategoryChange(category.id, category.name),
     })),
   ];
 
@@ -63,44 +66,33 @@ export default function TransactionsFilters({
       label: 'Income & Expense',
       onClick: () => onTypeChange('Income & Expense'),
     },
-    {
-      id: 'income',
-      label: 'Income',
-      onClick: () => onTypeChange('Income'),
-    },
-    {
-      id: 'expense',
-      label: 'Expense',
-      onClick: () => onTypeChange('Expense'),
-    },
+    { id: 'income', label: 'Income', onClick: () => onTypeChange('Income') },
+    { id: 'expense', label: 'Expense', onClick: () => onTypeChange('Expense') },
   ];
 
   return (
-    <div className="bg-card shadow-card border-0 p-4 rounded-xl flex flex-wrap gap-3 items-center">
+    <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-4">
       <DateRangeCalendar />
-
       <DropdownButton
         trigger={
           <Button variant="outline" className="gap-2">
-            {selectedAccount}
+            {accountLabel}
             <ChevronDown size={16} />
           </Button>
         }
         items={accountItems}
         align="start"
       />
-
       <DropdownButton
         trigger={
           <Button variant="outline" className="gap-2">
-            {selectedCategory}
+            {categoryLabel}
             <ChevronDown size={16} />
           </Button>
         }
         items={categoryItems}
         align="start"
       />
-
       <DropdownButton
         trigger={
           <Button variant="outline" className="gap-2">
@@ -111,8 +103,12 @@ export default function TransactionsFilters({
         items={typeItems}
         align="start"
       />
-
-      <Input placeholder="Search…" className="flex-1 max-w-xs" />
+      <SearchInput
+        value={search}
+        onChange={onSearchChange}
+        placeholder="Search transactions..."
+        className="max-w-xs flex-1"
+      />
     </div>
   );
 }

@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/useToast';
@@ -13,8 +12,6 @@ export const useRecurringRules = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const hasProcessedDue = useRef(false);
-
   const { data: recurringRules = [], isLoading } = useQuery<RecurringRule[]>({
     queryKey: ['recurring-rules', user?.id],
     queryFn: async () => recurringRulesApi.getRecurringRules(user!.id),
@@ -60,8 +57,7 @@ export const useRecurringRules = () => {
   });
 
   const deleteRule = useMutation({
-    mutationFn: async (id: string) =>
-      recurringRulesApi.deleteRecurringRule(user!.id, id),
+    mutationFn: async (id: string) => recurringRulesApi.deleteRecurringRule(user!.id, id),
     onSuccess: () => {
       invalidate();
       toast({ title: 'Recurring rule deleted' });
@@ -112,8 +108,7 @@ export const useRecurringRules = () => {
   });
 
   const runRuleNow = useMutation({
-    mutationFn: async (ruleId: string) =>
-      recurringRulesApi.runRuleNow(user!.id, ruleId),
+    mutationFn: async (ruleId: string) => recurringRulesApi.runRuleNow(user!.id, ruleId),
     onSuccess: () => {
       invalidate();
       toast({ title: 'Rule executed' });
@@ -126,12 +121,6 @@ export const useRecurringRules = () => {
       });
     },
   });
-
-  useEffect(() => {
-    if (!user || hasProcessedDue.current) return;
-    hasProcessedDue.current = true;
-    processDue.mutate();
-  }, [user, processDue]);
 
   return {
     recurringRules,
