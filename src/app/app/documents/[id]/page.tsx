@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams } from 'next/navigation';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/organisms/layout/DashboardLayout';
 import { ProtectedRoute } from '@/components/molecules/common/ProtectedRoute';
 import { useDocuments } from '@/hooks/useDocuments';
 import { ReminderForm } from '@/components/organisms/modules/documents/ReminderForm';
 import { LinkDocumentDialog } from '@/components/organisms/modules/documents/LinkDocumentDialog';
+import { DocumentPreview } from '@/components/organisms/modules/documents/DocumentPreview';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,8 +22,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Loader2, Trash2, Archive, Link2, Bell } from 'lucide-react';
+import { Loader2, Trash2, Archive, Link2, Bell, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
+import { ROUTES } from '@/lib/constants/routes';
 
 function DocumentDetailInner({ documentId }: { documentId: string }) {
   const router = useRouter();
@@ -43,9 +45,17 @@ function DocumentDetailInner({ documentId }: { documentId: string }) {
   const [linkOpen, setLinkOpen] = useState(false);
   const [deletingReminderId, setDeletingReminderId] = useState<string | null>(null);
 
+  const backButton = (
+    <Button variant="outline" size="sm" asChild>
+      <Link href={ROUTES.documents} className="gap-2">
+        <ArrowLeft size={16} /> Back
+      </Link>
+    </Button>
+  );
+
   if (isLoading) {
     return (
-      <DashboardLayout title="Loading..." description="">
+      <DashboardLayout title="Loading..." description="" actions={backButton}>
         <div className="flex items-center justify-center py-12">
           <Loader2 className="animate-spin" size={24} />
         </div>
@@ -55,7 +65,7 @@ function DocumentDetailInner({ documentId }: { documentId: string }) {
 
   if (!document) {
     return (
-      <DashboardLayout title="Document Not Found" description="">
+      <DashboardLayout title="Document Not Found" description="" actions={backButton}>
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-red-600">Document not found</p>
@@ -67,12 +77,12 @@ function DocumentDetailInner({ documentId }: { documentId: string }) {
 
   const handleDelete = async () => {
     await deleteDocument.mutateAsync(documentId);
-    router.push('/documents');
+    router.push(ROUTES.documents);
   };
 
   const handleArchive = async () => {
     await archiveDocument.mutateAsync(documentId);
-    router.push('/documents');
+    router.push(ROUTES.documents);
   };
 
   const handleAddLink = async (entityType: any, entityId: string) => {
@@ -101,7 +111,8 @@ function DocumentDetailInner({ documentId }: { documentId: string }) {
       title={document.name}
       description={`Uploaded on ${format(new Date(document.created_at), 'MMM dd, yyyy')}`}
       actions={
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {backButton}
           <Button
             variant="outline"
             onClick={() => setReminderOpen(true)}
@@ -136,26 +147,12 @@ function DocumentDetailInner({ documentId }: { documentId: string }) {
       }
     >
       <div className="space-y-6">
-        {/* Document Preview */}
         <Card>
           <CardHeader>
             <CardTitle>Preview</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex min-h-[400px] items-center justify-center rounded-lg bg-gray-100 p-8 text-center dark:bg-gray-800">
-              <div className="text-gray-500 dark:text-gray-400">
-                <p className="mb-2">{document.file_type.toUpperCase()} Preview</p>
-                <p className="text-sm">Size: {(document.file_size / 1024 / 1024).toFixed(2)} MB</p>
-                <a
-                  href={document.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-4 inline-block text-blue-600 hover:underline dark:text-blue-400"
-                >
-                  Open Original File
-                </a>
-              </div>
-            </div>
+            <DocumentPreview document={document} />
           </CardContent>
         </Card>
 
@@ -352,7 +349,17 @@ function DocumentDetailPage() {
 
   if (!documentId) {
     return (
-      <DashboardLayout title="Error" description="">
+      <DashboardLayout
+        title="Error"
+        description=""
+        actions={
+          <Button variant="outline" size="sm" asChild>
+            <Link href={ROUTES.documents} className="gap-2">
+              <ArrowLeft size={16} /> Back
+            </Link>
+          </Button>
+        }
+      >
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-red-600">Invalid document ID</p>

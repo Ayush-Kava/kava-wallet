@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { ensureStorageFilename } from '@/lib/document-file-utils';
 
 const isR2Configured = (): boolean =>
   Boolean(
@@ -36,8 +37,12 @@ const getR2Client = (): S3Client =>
     responseChecksumValidation: 'WHEN_REQUIRED',
   });
 
-export const buildDocumentKey = (userId: string, filename: string): string => {
-  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+export const buildDocumentKey = (
+  userId: string,
+  filename: string,
+  mimeType = 'application/octet-stream',
+): string => {
+  const safeName = ensureStorageFilename(filename, mimeType);
   return `documents/${userId}/${crypto.randomUUID()}-${safeName}`;
 };
 
@@ -52,7 +57,7 @@ export const uploadDocumentToR2 = async (
   contentType: string,
   body: Buffer | Uint8Array,
 ): Promise<{ publicUrl: string; key: string }> => {
-  const key = buildDocumentKey(userId, filename);
+  const key = buildDocumentKey(userId, filename, contentType);
 
   if (!isR2Configured()) {
     return { publicUrl: `/uploads/${key}`, key };
@@ -76,7 +81,7 @@ export const generatePresignedUploadUrl = async (
   filename: string,
   _contentType?: string,
 ): Promise<{ uploadUrl: string; publicUrl: string; key: string }> => {
-  const key = buildDocumentKey(userId, filename);
+  const key = buildDocumentKey(userId, filename, _contentType ?? 'application/octet-stream');
 
   if (!isR2Configured()) {
     const publicUrl = `/uploads/${key}`;

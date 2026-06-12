@@ -2,6 +2,11 @@ import { NextRequest } from 'next/server';
 import { requireUser } from '@/lib/auth';
 import { uploadDocumentToR2 } from '@/lib/r2';
 import {
+  inferDocumentFileType,
+  resolveFileExtension,
+  resolveMimeType,
+} from '@/lib/document-file-utils';
+import {
   successResponse,
   errorResponse,
   internalServerErrorResponse,
@@ -20,14 +25,17 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const { publicUrl } = await uploadDocumentToR2(
-      user.id,
-      file.name,
-      file.type || 'application/octet-stream',
-      buffer,
-    );
+    const mimeType = resolveMimeType(file.name, file.type);
+    const fileExtension = resolveFileExtension(file.name, mimeType);
+    const { publicUrl } = await uploadDocumentToR2(user.id, file.name, mimeType, buffer);
 
-    return successResponse({ url: publicUrl, publicUrl });
+    return successResponse({
+      url: publicUrl,
+      publicUrl,
+      mime_type: mimeType,
+      file_extension: fileExtension,
+      file_type: inferDocumentFileType(mimeType, fileExtension),
+    });
   } catch (error: any) {
     console.error('Document upload error', error);
     if (error?.message === 'Unauthorized') return unauthorizedResponse();

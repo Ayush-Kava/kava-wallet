@@ -52,14 +52,27 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
+    const securityHeaders = [
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+    ];
+
     return [
       {
-        source: '/(.*)',
-        headers: [
-          { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-        ],
+        source: '/app/:path*',
+        headers: [{ key: 'X-Frame-Options', value: 'DENY' }, ...securityHeaders],
+      },
+      {
+        source: '/',
+        headers: [{ key: 'X-Frame-Options', value: 'DENY' }, ...securityHeaders],
+      },
+      {
+        source: '/auth',
+        headers: [{ key: 'X-Frame-Options', value: 'DENY' }, ...securityHeaders],
+      },
+      {
+        source: '/api/:path*',
+        headers: securityHeaders,
       },
     ];
   },

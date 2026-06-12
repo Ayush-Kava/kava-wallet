@@ -295,9 +295,11 @@ model Document {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String
   description String?
-  file_url    String
-  file_type   String
-  file_size   Int
+  file_url        String
+  file_type       String
+  file_extension  String   @default("")
+  mime_type       String   @default("application/octet-stream")
+  file_size       Int
   tags        String[] @default([])
   notes       String?
   archived    Boolean  @default(false)

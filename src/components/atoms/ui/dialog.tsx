@@ -51,14 +51,34 @@ const DialogContent = React.forwardRef<
 ));
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
+/** Visible in dark mode; avoids border-b clipping inside overflow-hidden dialogs. */
+const DialogSeparator = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    role="separator"
+    aria-hidden="true"
+    className={cn('h-px w-full shrink-0 bg-border dark:bg-white/12', className)}
+    {...props}
+  />
+);
+DialogSeparator.displayName = 'DialogSeparator';
+
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('flex flex-col space-y-1.5 text-center sm:text-left', className)} {...props} />
+  <div
+    className={cn(
+      'flex flex-col space-y-1.5 border-b border-border pb-4 text-center dark:border-white/12 sm:text-left',
+      className,
+    )}
+    {...props}
+  />
 );
 DialogHeader.displayName = 'DialogHeader';
 
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn('flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2', className)}
+    className={cn(
+      'flex flex-col-reverse border-t border-border pt-4 dark:border-white/12 sm:flex-row sm:justify-end sm:space-x-2',
+      className,
+    )}
     {...props}
   />
 );
@@ -95,6 +115,7 @@ export {
   DialogClose,
   DialogTrigger,
   DialogContent,
+  DialogSeparator,
   DialogHeader,
   DialogFooter,
   DialogTitle,

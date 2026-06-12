@@ -27,13 +27,25 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const user = await requireUser();
     const body = await req.json().catch(() => ({}));
-    const { name, description, file_url, file_type, file_size, tags, notes } = body;
+    const {
+      name,
+      description,
+      file_url,
+      file_type,
+      file_extension,
+      mime_type,
+      file_size,
+      tags,
+      notes,
+    } = body;
 
     const updated = await update(user.id, id, {
       name,
       description,
       file_url,
       file_type,
+      file_extension,
+      mime_type,
       file_size,
       tags,
       notes,

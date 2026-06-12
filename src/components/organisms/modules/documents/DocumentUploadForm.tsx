@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogSeparator,
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
@@ -31,6 +32,7 @@ import type { CreateDocumentData } from '@/types/document-types';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { documentUploadUtils } from '@/lib/document-upload-utils';
+import { inferDocumentFileType, resolveFileExtension, resolveMimeType } from '@/lib/document-file-utils';
 import { useToast } from '@/hooks/useToast';
 
 const documentFormSchema = z.object({
@@ -74,6 +76,9 @@ export function DocumentUploadForm({
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
+      const mimeType = resolveMimeType(selectedFile.name, selectedFile.type);
+      const fileExtension = resolveFileExtension(selectedFile.name, mimeType);
+      form.setValue('file_type', inferDocumentFileType(mimeType, fileExtension));
       if (!form.getValues('name')) {
         form.setValue('name', selectedFile.name.replace(/\.[^/.]+$/, ''));
       }
@@ -89,11 +94,14 @@ export function DocumentUploadForm({
     setUploading(true);
     try {
       // Upload file to storage
-      const fileUrl = await documentUploadUtils.uploadFile(user.id, file);
+      const upload = await documentUploadUtils.uploadFile(user.id, file);
 
       await onSubmit({
         ...values,
-        file_url: fileUrl,
+        file_type: upload.file_type,
+        file_url: upload.publicUrl,
+        file_extension: upload.file_extension,
+        mime_type: upload.mime_type,
         file_size: file.size,
         tags: values.tags ? values.tags.split(',').map(t => t.trim()) : [],
       });
@@ -114,14 +122,19 @@ export function DocumentUploadForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px]">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[min(90vh,44rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[520px]">
+        <DialogHeader className="shrink-0 space-y-1 border-b-0 px-6 py-4 pb-4 shadow-none">
           <DialogTitle>Upload Document</DialogTitle>
           <DialogDescription>Add a new document to your vault</DialogDescription>
         </DialogHeader>
+        <DialogSeparator />
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <FormField
               control={form.control}
               name="file_type"
@@ -173,6 +186,7 @@ export function DocumentUploadForm({
                   <FormControl>
                     <Textarea
                       placeholder="Add additional details about this document"
+                      className="min-h-[72px] resize-none"
                       {...field}
                       disabled={uploading || isSubmitting}
                     />
@@ -198,7 +212,13 @@ export function DocumentUploadForm({
                         <SelectValue />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent
+                      side="bottom"
+                      align="start"
+                      position="popper"
+                      sideOffset={4}
+                      collisionPadding={16}
+                    >
                       <SelectItem value="pdf">PDF</SelectItem>
                       <SelectItem value="image">Image</SelectItem>
                       <SelectItem value="scan">Scan</SelectItem>
@@ -238,6 +258,7 @@ export function DocumentUploadForm({
                   <FormControl>
                     <Textarea
                       placeholder="Add any notes about this document"
+                      className="min-h-[72px] resize-none"
                       {...field}
                       disabled={uploading || isSubmitting}
                     />
@@ -246,8 +267,10 @@ export function DocumentUploadForm({
                 </FormItem>
               )}
             />
+            </div>
 
-            <div className="flex justify-end gap-3">
+            <DialogSeparator />
+            <div className="flex shrink-0 justify-end gap-3 bg-background px-6 py-4">
               <Button
                 type="button"
                 variant="outline"

@@ -12,6 +12,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogSeparator,
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
@@ -185,10 +186,11 @@ export default function LoansPage() {
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="flex max-h-[min(90vh,52rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[640px]">
-          <DialogHeader className="shrink-0 space-y-1 border-b px-6 py-4">
+          <DialogHeader className="shrink-0 space-y-1 border-b-0 px-6 py-4 pb-4 shadow-none">
             <DialogTitle className="font-display">Create new loan</DialogTitle>
             <DialogDescription>Enter loan details to set up EMI tracking</DialogDescription>
           </DialogHeader>
+          <DialogSeparator />
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
             <LoanForm
               embedded

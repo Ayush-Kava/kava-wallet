@@ -6,6 +6,8 @@ export interface Document {
   description?: string | null;
   file_url: string;
   file_type: string;
+  file_extension: string;
+  mime_type: string;
   file_size: number;
   tags: string[];
   notes?: string | null;
@@ -45,6 +47,8 @@ export interface CreateDocumentData {
   description?: string;
   file_url: string;
   file_type: DocumentFileType;
+  file_extension: string;
+  mime_type: string;
   file_size: number;
   tags?: string[];
   notes?: string;
@@ -84,6 +88,8 @@ export const toDocumentType = (doc: any): Document => ({
   description: doc.description,
   file_url: doc.file_url,
   file_type: doc.file_type,
+  file_extension: doc.file_extension ?? '',
+  mime_type: doc.mime_type ?? 'application/octet-stream',
   file_size: doc.file_size,
   tags: doc.tags ?? [],
   notes: doc.notes,

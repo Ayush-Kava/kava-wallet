@@ -25,9 +25,19 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireUser();
     const body = await req.json().catch(() => ({}));
-    const { name, description, file_url, file_type, file_size, tags, notes } = body;
+    const {
+      name,
+      description,
+      file_url,
+      file_type,
+      file_extension,
+      mime_type,
+      file_size,
+      tags,
+      notes,
+    } = body;
 
-    if (!name || !file_url || !file_type || file_size == null) {
+    if (!name || !file_url || !file_type || !file_extension || !mime_type || file_size == null) {
       return errorResponse(ERRORS.GENERIC_BAD_REQUEST);
     }
 
@@ -36,6 +46,8 @@ export async function POST(req: NextRequest) {
       description,
       file_url,
       file_type,
+      file_extension,
+      mime_type,
       file_size,
       tags,
       notes,
