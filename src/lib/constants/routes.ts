@@ -20,5 +20,6 @@ export const ROUTES = {
   documents: '/app/documents',
   document: (id: string) => `/app/documents/${id}`,
   analytics: '/app/analytics',
+  categories: '/app/categories',
   settings: '/app/settings',
 } as const;

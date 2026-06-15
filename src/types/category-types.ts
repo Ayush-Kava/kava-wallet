@@ -18,6 +18,12 @@ export interface CreateCategoryData {
   icon: string;
 }
 
+export interface UpdateCategoryData {
+  name?: string;
+  color?: string;
+  icon?: string;
+}
+
 export const toCategoryType = (category: any): Category => ({
   id: category.id,
   user_id: category.userId,

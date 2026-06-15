@@ -1,23 +1,13 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useCategories } from '@/hooks/useCategories';
-
-const PRESET_COLORS = [
-  '#EF4444',
-  '#F97316',
-  '#F59E0B',
-  '#10B981',
-  '#06B6D4',
-  '#3B82F6',
-  '#6366F1',
-  '#8B5CF6',
-  '#EC4899',
-  '#64748B',
-];
+import { CategoryFormFields } from '@/components/molecules/categories/CategoryFormFields';
+import {
+  categoryIconForMode,
+  type CategoryDisplayMode,
+} from '@/lib/category-display';
 
 interface CreateCategoryDialogProps {
   open: boolean;
@@ -26,26 +16,21 @@ interface CreateCategoryDialogProps {
   onCategoryCreated: (categoryId: string) => void;
 }
 
-export function CreateCategoryDialog({
-  open,
-  onOpenChange,
+function CreateCategoryForm({
   type,
   onCategoryCreated,
-}: CreateCategoryDialogProps) {
+  onClose,
+}: {
+  type: 'income' | 'expense';
+  onCategoryCreated: (categoryId: string) => void;
+  onClose: () => void;
+}) {
   const { createCategory } = useCategories();
   const [name, setName] = useState('');
-  const [color, setColor] = useState(PRESET_COLORS[0]);
+  const [displayMode, setDisplayMode] = useState<CategoryDisplayMode>('color');
+  const [color, setColor] = useState('#6366F1');
+  const [emoji, setEmoji] = useState('🛒');
   const [isCreating, setIsCreating] = useState(false);
-
-  const resetForm = () => {
-    setName('');
-    setColor(PRESET_COLORS[0]);
-  };
-
-  const handleOpenChange = (newOpen: boolean) => {
-    onOpenChange(newOpen);
-    if (!newOpen) resetForm();
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,13 +39,13 @@ export function CreateCategoryDialog({
     setIsCreating(true);
     try {
       const newCategory = await createCategory.mutateAsync({
-        name,
+        name: name.trim(),
         type,
         color,
-        icon: 'Circle',
+        icon: categoryIconForMode(displayMode, emoji),
       });
       onCategoryCreated(newCategory.id);
-      handleOpenChange(false);
+      onClose();
     } catch (error) {
       console.error('Failed to create category:', error);
     } finally {
@@ -69,41 +54,56 @@ export function CreateCategoryDialog({
   };
 
   return (
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <CategoryFormFields
+        name={name}
+        onNameChange={setName}
+        displayMode={displayMode}
+        onDisplayModeChange={setDisplayMode}
+        color={color}
+        onColorChange={setColor}
+        emoji={emoji}
+        onEmojiChange={setEmoji}
+        disabled={isCreating}
+      />
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={isCreating || !name.trim() || (displayMode === 'emoji' && !emoji)}
+      >
+        {isCreating ? <Loader2 className="animate-spin" /> : 'Create Category'}
+      </Button>
+    </form>
+  );
+}
+
+export function CreateCategoryDialog({
+  open,
+  onOpenChange,
+  type,
+  onCategoryCreated,
+}: CreateCategoryDialogProps) {
+  const [session, setSession] = useState(0);
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (newOpen) setSession(s => s + 1);
+    onOpenChange(newOpen);
+  };
+
+  return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="max-h-[min(90vh,40rem)] overflow-y-auto sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>Create {type === 'income' ? 'Income' : 'Expense'} Category</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Category Name</Label>
-            <Input
-              placeholder="e.g. Groceries, Rent"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              autoFocus
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Color</Label>
-            <div className="flex flex-wrap gap-2">
-              {PRESET_COLORS.map(c => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  className={`h-8 w-8 rounded-full transition-all ${
-                    color === c ? 'scale-110 ring-2 ring-primary ring-offset-2' : 'hover:scale-105'
-                  }`}
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-            </div>
-          </div>
-          <Button type="submit" className="w-full" disabled={isCreating || !name.trim()}>
-            {isCreating ? <Loader2 className="animate-spin" /> : 'Create Category'}
-          </Button>
-        </form>
+        {open && (
+          <CreateCategoryForm
+            key={`${type}-${session}`}
+            type={type}
+            onCategoryCreated={onCategoryCreated}
+            onClose={() => onOpenChange(false)}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

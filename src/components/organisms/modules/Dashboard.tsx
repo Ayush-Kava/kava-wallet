@@ -1,22 +1,45 @@
 'use client';
 
 import { useMemo } from 'react';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth, addDays, isBefore, isAfter } from 'date-fns';
 import DashboardLayout from '@/components/organisms/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSummaryTransactions } from '@/hooks/useSummaryTransactions';
 import { useAccounts } from '@/hooks/useAccounts';
+import { useDocuments } from '@/hooks/useDocuments';
 import { ROUTES } from '@/lib/constants/routes';
 import { useUiStore } from '@/store/ui/use-ui-store';
 import { cn, formatCurrency } from '@/lib/utils';
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import {
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  ArrowUpRight,
+  ArrowDownRight,
+  Bell,
+  Loader2,
+} from 'lucide-react';
 import Link from 'next/link';
 
 const Dashboard = () => {
   const { transactions } = useSummaryTransactions();
   const { accounts, totalBalance } = useAccounts();
+  const { getUpcomingReminders } = useDocuments();
   const { openTransactionDialog } = useUiStore();
+
+  const upcomingReminders = useMemo(() => {
+    const now = new Date();
+    const horizon = addDays(now, 30);
+    return (getUpcomingReminders.data || [])
+      .filter(r => {
+        const date = new Date(r.reminder_date);
+        return !isBefore(date, now) && !isAfter(date, horizon);
+      })
+      .slice(0, 5);
+  }, [getUpcomingReminders.data]);
 
   const currentMonthStats = useMemo(() => {
     const now = new Date();
@@ -232,6 +255,66 @@ const Dashboard = () => {
                     </div>
                   ))}
                 </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Upcoming Reminders */}
+          <Card className="flex h-64 flex-col shadow-none lg:col-span-2">
+            <CardHeader className="flex shrink-0 flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <Bell className="h-4 w-4" />
+                Upcoming Reminders
+              </CardTitle>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href={ROUTES.documents}>View Documents</Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="min-h-0 flex-1 overflow-hidden">
+              {getUpcomingReminders.isLoading ? (
+                <div className="flex h-full items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading reminders...
+                </div>
+              ) : upcomingReminders.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-center text-muted-foreground">
+                  <p>No reminders due in the next 30 days.</p>
+                </div>
+              ) : (
+                <ScrollArea className="h-full pr-3">
+                  <div className="space-y-3">
+                    {upcomingReminders.map(reminder => {
+                      const dueDate = new Date(reminder.reminder_date);
+                      const daysUntil = Math.ceil(
+                        (dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+                      );
+                      const isDueSoon = daysUntil <= 7;
+
+                      return (
+                        <Link
+                          key={reminder.id}
+                          href={ROUTES.document(reminder.document_id)}
+                          className="flex items-center justify-between rounded-lg bg-muted/50 p-3 transition-colors hover:bg-muted"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{reminder.title}</p>
+                            <p className="text-xs capitalize text-muted-foreground">
+                              {reminder.reminder_type.replace('_', ' ')} •{' '}
+                              {format(dueDate, 'MMM d, yyyy')}
+                            </p>
+                          </div>
+                          <Badge variant={isDueSoon ? 'destructive' : 'secondary'}>
+                            {daysUntil === 0
+                              ? 'Today'
+                              : daysUntil === 1
+                                ? 'Tomorrow'
+                                : `${daysUntil} days`}
+                          </Badge>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
               )}
             </CardContent>
           </Card>

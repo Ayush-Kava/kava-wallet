@@ -19,6 +19,13 @@ export interface CreateBudgetData {
   end_date?: string | null;
 }
 
+export interface UpdateBudgetData {
+  amount?: number;
+  period?: string;
+  start_date?: string;
+  end_date?: string | null;
+}
+
 export const toBudgetType = (budget: any): Budget => ({
   id: budget.id,
   user_id: budget.userId,

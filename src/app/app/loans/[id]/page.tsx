@@ -28,6 +28,7 @@ import { ProtectedRoute } from '@/components/molecules/common/ProtectedRoute';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/useToast';
 import { formatCurrency } from '@/lib/utils';
+import { ROUTES } from '@/lib/constants/routes';
 import { format } from 'date-fns';
 
 function LoanDetailContent({ loanId }: { loanId: string }) {
@@ -63,7 +64,7 @@ function LoanDetailContent({ loanId }: { loanId: string }) {
         title: 'Success',
         description: 'Loan deleted successfully',
       });
-      router.push('/loans');
+      router.push(ROUTES.loans);
     } catch (error) {
       toast({
         title: 'Error',

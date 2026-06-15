@@ -9,18 +9,22 @@ import { GoalForm } from './GoalForm';
 import { GoalCard } from './GoalCard';
 import { useGoals } from '@/hooks/useGoals';
 import { Plus, Target } from 'lucide-react';
-import type { CreateGoalData, UpdateGoalData, GoalPriority } from '@/types/goal-types';
-import { GOAL_PRIORITY_LABELS } from '@/types/goal-types';
+import type { CreateGoalData, UpdateGoalData, GoalPriority, GoalStatus } from '@/types/goal-types';
+import { GOAL_PRIORITY_LABELS, GOAL_STATUS_LABELS } from '@/types/goal-types';
 
 const GOAL_PRIORITIES: GoalPriority[] = ['low', 'medium', 'high'];
 
 export default function GoalsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [selectedPriority, setSelectedPriority] = useState<GoalPriority | 'all'>('all');
+  const [selectedStatus, setSelectedStatus] = useState<GoalStatus | 'all'>('active');
   const { goals, isLoading, createGoal, isCreatingGoal } = useGoals();
 
-  const filteredGoals =
-    selectedPriority === 'all' ? goals : goals.filter(goal => goal.priority === selectedPriority);
+  const filteredGoals = goals.filter(goal => {
+    const matchesStatus = selectedStatus === 'all' || goal.status === selectedStatus;
+    const matchesPriority = selectedPriority === 'all' || goal.priority === selectedPriority;
+    return matchesStatus && matchesPriority;
+  });
 
   const handleCreateGoal = async (data: CreateGoalData | UpdateGoalData) => {
     if ('id' in data) {
@@ -103,7 +107,25 @@ export default function GoalsPage() {
           </Card>
         </div>
 
-        {/* Filters */}
+        {/* Status Filters */}
+        <div className="flex flex-wrap gap-2">
+          {(['all', 'active', 'completed', 'paused'] as const).map(status => {
+            const count =
+              status === 'all' ? goals.length : goals.filter(g => g.status === status).length;
+            return (
+              <Badge
+                key={status}
+                variant={selectedStatus === status ? 'default' : 'outline'}
+                className="cursor-pointer capitalize"
+                onClick={() => setSelectedStatus(status)}
+              >
+                {status === 'all' ? 'All' : GOAL_STATUS_LABELS[status]} ({count})
+              </Badge>
+            );
+          })}
+        </div>
+
+        {/* Priority Filters */}
         <div className="flex flex-wrap gap-2">
           <Badge
             variant={selectedPriority === 'all' ? 'default' : 'outline'}
@@ -141,11 +163,11 @@ export default function GoalsPage() {
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Target className="mb-2 h-12 w-12 text-muted-foreground" />
               <p className="text-center text-muted-foreground">
-                {selectedPriority === 'all'
-                  ? 'No goals yet. Start planning your financial future!'
-                  : `No ${GOAL_PRIORITY_LABELS[selectedPriority].toLowerCase()} goals found.`}
+                {selectedStatus !== 'all' || selectedPriority !== 'all'
+                  ? 'No goals match your filters.'
+                  : 'No goals yet. Start planning your financial future!'}
               </p>
-              {selectedPriority === 'all' && (
+              {selectedStatus === 'all' && selectedPriority === 'all' && (
                 <Button onClick={() => setFormOpen(true)} className="mt-4" variant="default">
                   Create Your First Goal
                 </Button>

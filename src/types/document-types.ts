@@ -39,7 +39,13 @@ export interface DocumentReminder {
 }
 
 export type DocumentFileType = 'pdf' | 'image' | 'scan' | 'receipt';
-export type LinkedEntityType = 'transaction' | 'credit_card' | 'loan' | 'emi' | 'account';
+export type LinkedEntityType =
+  | 'transaction'
+  | 'credit_card'
+  | 'loan'
+  | 'emi'
+  | 'account'
+  | 'investment';
 export type ReminderType = 'policy_expiry' | 'statement_due' | 'document_validity';
 
 export interface CreateDocumentData {
@@ -79,6 +85,7 @@ export interface CreateDocumentReminderData {
 
 export interface UpdateDocumentReminderData extends Partial<CreateDocumentReminderData> {
   id: string;
+  completed?: boolean;
 }
 
 export const toDocumentType = (doc: any): Document => ({

@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { DatePicker } from '@/components/molecules/common/DatePicker';
+import { CategorySelect } from '@/components/molecules/categories/CategorySelect';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useCategories } from '@/hooks/useCategories';
 import type { RecurringRule } from '@/types/recurring-types';
@@ -294,21 +295,12 @@ export function RecurringForm({ initialRule, onSubmit, isSubmitting }: Recurring
 
           <div className="space-y-2">
             <Label>Category</Label>
-            <Select
+            <CategorySelect
+              categories={categories}
               value={formState.category_id}
               onValueChange={value => handleChange('category_id', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map(category => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Select category"
+            />
           </div>
         </div>
       )}

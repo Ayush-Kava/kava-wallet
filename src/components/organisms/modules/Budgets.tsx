@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, type FormEvent } from 'react';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 import { z } from 'zod';
 import DashboardLayout from '@/components/organisms/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +20,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useCategories } from '@/hooks/useCategories';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useBudgets } from '@/hooks/useBudgets';
-import { Plus, Target, AlertTriangle, CheckCircle2, Trash2, Loader2 } from 'lucide-react';
+import type { Budget } from '@/types/budget-types';
+import { Plus, Target, AlertTriangle, CheckCircle2, Trash2, Loader2, Pencil } from 'lucide-react';
+import { CategoryOption } from '@/components/molecules/categories/CategoryOption';
+import { CategoryIcon } from '@/components/molecules/categories/CategoryIcon';
 
 const budgetSchema = z.object({
   category_id: z.string().min(1, 'Please select a category'),
@@ -31,21 +34,23 @@ const budgetSchema = z.object({
 const Budgets = () => {
   const { expenseCategories } = useCategories();
   const { transactions } = useTransactions();
-  const { budgets, isLoading, createBudget, deleteBudget, isCreatingBudget } = useBudgets();
+  const { budgets, isLoading, createBudget, updateBudget, deleteBudget, isCreatingBudget, isUpdatingBudget } =
+    useBudgets();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const [categoryId, setCategoryId] = useState('');
   const [amount, setAmount] = useState('');
   const [period, setPeriod] = useState<'monthly' | 'yearly'>('monthly');
 
+  const now = useMemo(() => new Date(), []);
+
   const budgetProgress = useMemo(() => {
     if (!budgets.length) return {};
 
     const now = new Date();
-    const monthStart = startOfMonth(now);
-    const monthEnd = endOfMonth(now);
 
     const result: Record<
       string,
@@ -57,11 +62,15 @@ const Budgets = () => {
     > = {};
 
     budgets.forEach(budget => {
+      const periodStart =
+        budget.period === 'yearly' ? startOfYear(now) : startOfMonth(now);
+      const periodEnd = budget.period === 'yearly' ? endOfYear(now) : endOfMonth(now);
+
       const categoryTransactions = transactions.filter(t => {
         if (t.type !== 'expense') return false;
         if (t.category_id !== budget.category_id) return false;
         const date = new Date(t.date);
-        return date >= monthStart && date <= monthEnd;
+        return date >= periodStart && date <= periodEnd;
       });
 
       const spent = categoryTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
@@ -86,6 +95,21 @@ const Budgets = () => {
     setAmount('');
     setPeriod('monthly');
     setFormErrors({});
+    setEditingBudget(null);
+  };
+
+  const openCreateDialog = () => {
+    resetForm();
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (budget: Budget) => {
+    setEditingBudget(budget);
+    setCategoryId(budget.category_id || '');
+    setAmount(String(budget.amount));
+    setPeriod(budget.period as 'monthly' | 'yearly');
+    setFormErrors({});
+    setDialogOpen(true);
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -107,11 +131,25 @@ const Budgets = () => {
       return;
     }
 
-    const now = new Date();
-    await createBudget({
-      ...result.data,
-      start_date: format(startOfMonth(now), 'yyyy-MM-dd'),
-    });
+    const submitNow = new Date();
+    const startDate =
+      result.data.period === 'yearly'
+        ? format(startOfYear(submitNow), 'yyyy-MM-dd')
+        : format(startOfMonth(submitNow), 'yyyy-MM-dd');
+
+    if (editingBudget) {
+      await updateBudget(editingBudget.id, {
+        amount: result.data.amount,
+        period: result.data.period,
+        start_date: startDate,
+      });
+    } else {
+      await createBudget({
+        ...result.data,
+        start_date: startDate,
+      });
+    }
+
     setDialogOpen(false);
     resetForm();
   };
@@ -130,6 +168,7 @@ const Budgets = () => {
 
   const usedCategories = budgets?.map(b => b.category_id) || [];
   const availableCategories = expenseCategories.filter(c => !usedCategories.includes(c.id));
+  const selectedBudgetCategory = availableCategories.find(c => c.id === categoryId);
 
   return (
     <DashboardLayout
@@ -137,8 +176,8 @@ const Budgets = () => {
       description="Set and manage your spending limits"
       actions={
         <Button
-          onClick={() => setDialogOpen(true)}
-          disabled={availableCategories.length === 0}
+          onClick={openCreateDialog}
+          disabled={availableCategories.length === 0 && !editingBudget}
           className="inline-flex items-center gap-2"
         >
           <Plus size={18} /> New Budget
@@ -155,33 +194,53 @@ const Budgets = () => {
         >
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle className="font-display">Create Budget</DialogTitle>
+              <DialogTitle className="font-display">
+                {editingBudget ? 'Edit Budget' : 'Create Budget'}
+              </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Category *</Label>
-                <Select value={categoryId} onValueChange={setCategoryId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableCategories.map(cat => (
+              {!editingBudget && (
+                <div className="space-y-2">
+                  <Label>Category *</Label>
+                  <Select value={categoryId} onValueChange={setCategoryId}>
+                    <SelectTrigger>
+                      {selectedBudgetCategory ? (
+                        <CategoryOption
+                          className="min-w-0 flex-1"
+                          name={selectedBudgetCategory.name}
+                          icon={selectedBudgetCategory.icon}
+                          color={selectedBudgetCategory.color}
+                        />
+                      ) : (
+                        <SelectValue placeholder="Select category" />
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableCategories.map(cat => (
                       <SelectItem key={cat.id} value={cat.id}>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="h-3 w-3 rounded-full"
-                            style={{ backgroundColor: cat.color }}
-                          />
-                          {cat.name}
-                        </div>
+                        <CategoryOption name={cat.name} icon={cat.icon} color={cat.color} />
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formErrors.category_id && (
-                  <p className="text-sm text-destructive">{formErrors.category_id}</p>
-                )}
-              </div>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.category_id && (
+                    <p className="text-sm text-destructive">{formErrors.category_id}</p>
+                  )}
+                </div>
+              )}
+
+              {editingBudget && (
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <div className="flex items-center gap-2 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm">
+                    <CategoryOption
+                      name={editingBudget.categories?.name || ''}
+                      icon={editingBudget.categories?.icon || 'circle'}
+                      color={editingBudget.categories?.color || '#6366F1'}
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Amount *</Label>
@@ -212,8 +271,14 @@ const Budgets = () => {
                 )}
               </div>
 
-              <Button type="submit" className="w-full" disabled={isCreatingBudget}>
-                {isCreatingBudget ? <Loader2 className="animate-spin" /> : 'Create Budget'}
+              <Button type="submit" className="w-full" disabled={isCreatingBudget || isUpdatingBudget}>
+                {isCreatingBudget || isUpdatingBudget ? (
+                  <Loader2 className="animate-spin" />
+                ) : editingBudget ? (
+                  'Save Changes'
+                ) : (
+                  'Create Budget'
+                )}
               </Button>
             </form>
           </DialogContent>
@@ -232,7 +297,7 @@ const Budgets = () => {
               <div className="py-12 text-center text-muted-foreground">
                 <p className="mb-2">No budgets yet.</p>
                 <p className="mb-4">Create your first budget to start tracking.</p>
-                <Button onClick={() => setDialogOpen(true)}>
+                <Button onClick={openCreateDialog}>
                   <Plus size={18} /> New Budget
                 </Button>
               </div>
@@ -253,23 +318,27 @@ const Budgets = () => {
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <div
-                            className="flex h-10 w-10 items-center justify-center rounded-lg"
-                            style={{
-                              backgroundColor: `${budget.categories?.color || '#6366F1'}20`,
-                            }}
-                          >
-                            <Target
-                              style={{
-                                color: budget.categories?.color || '#6366F1',
-                              }}
-                              size={20}
+                          {budget.categories ? (
+                            <CategoryIcon
+                              icon={budget.categories.icon}
+                              color={budget.categories.color}
+                              name={budget.categories.name}
+                              size="md"
                             />
-                          </div>
+                          ) : (
+                            <div
+                              className="flex h-10 w-10 items-center justify-center rounded-lg"
+                              style={{ backgroundColor: '#6366F120' }}
+                            >
+                              <Target style={{ color: '#6366F1' }} size={20} />
+                            </div>
+                          )}
                           <div>
                             <p className="font-semibold">{budget.categories?.name}</p>
-                            <p className="text-sm capitalize text-muted-foreground">
-                              {budget.period}
+                            <p className="text-sm text-muted-foreground">
+                              {budget.period === 'yearly'
+                                ? format(now, 'yyyy')
+                                : format(now, 'MMM yyyy')}
                             </p>
                           </div>
                         </div>
@@ -283,6 +352,12 @@ const Budgets = () => {
                           {progress.status === 'ok' && progress.percentage > 0 && (
                             <CheckCircle2 className="text-success" size={20} />
                           )}
+                          <button
+                            onClick={() => openEditDialog(budget)}
+                            className="rounded-lg p-2 text-muted-foreground opacity-0 transition-all hover:bg-muted group-hover:opacity-100"
+                          >
+                            <Pencil size={16} />
+                          </button>
                           <button
                             onClick={() => handleDelete(budget.id)}
                             className="rounded-lg p-2 text-destructive opacity-0 transition-all hover:bg-destructive/10 group-hover:opacity-100"

@@ -21,7 +21,11 @@ import {
 import { InvestmentForm } from './InvestmentForm';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDocuments } from '@/hooks/useDocuments';
 import { documentsApi } from '@/services/api/documents';
+import { LinkDocumentToEntityDialog } from '@/components/organisms/modules/documents/LinkDocumentToEntityDialog';
+import { ROUTES } from '@/lib/constants/routes';
+import type { LinkedEntityType } from '@/types/document-types';
 import { useQuery } from '@tanstack/react-query';
 import type { CreateInvestmentData, UpdateInvestmentData } from '@/types/investment-types';
 import { INVESTMENT_TYPE_LABELS } from '@/types/investment-types';
@@ -34,6 +38,7 @@ import {
   Loader2,
   TrendingUp,
   TrendingDown,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { formatDateStr } from '@/lib/ledger-utils';
 
@@ -55,9 +60,16 @@ export default function InvestmentDetail({ investmentId }: InvestmentDetailProps
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [linkDocOpen, setLinkDocOpen] = useState(false);
+
+  const { addDocumentLink, removeDocumentLink } = useDocuments();
 
   // Fetch linked documents
-  const { data: linkedDocuments = [], isLoading: documentsLoading } = useQuery({
+  const {
+    data: linkedDocuments = [],
+    isLoading: documentsLoading,
+    refetch: refetchLinkedDocuments,
+  } = useQuery({
     queryKey: ['investment-documents', investmentId, user?.id],
     queryFn: () => documentsApi.getDocumentsByLinkedEntity(user!.id, investmentId),
     enabled: !!user && !!investmentId,
@@ -73,7 +85,28 @@ export default function InvestmentDetail({ investmentId }: InvestmentDetailProps
 
   const handleDelete = async () => {
     await deleteInvestment(investmentId);
-    router.push('/app/investments');
+    router.push(ROUTES.investments);
+  };
+
+  const handleLinkDocument = async (
+    documentId: string,
+    entityType: LinkedEntityType,
+    entityId: string,
+  ) => {
+    await addDocumentLink.mutateAsync({
+      document_id: documentId,
+      linked_entity_type: entityType,
+      linked_entity_id: entityId,
+    });
+    await refetchLinkedDocuments();
+  };
+
+  const handleUnlinkDocument = async (documentId: string) => {
+    const doc = linkedDocuments.find(d => d.id === documentId);
+    const link = doc?.links?.find(l => l.linked_entity_id === investmentId);
+    if (!link) return;
+    await removeDocumentLink.mutateAsync({ linkId: link.id, documentId });
+    await refetchLinkedDocuments();
   };
 
   if (isLoading || !investment) {
@@ -202,11 +235,20 @@ export default function InvestmentDetail({ investmentId }: InvestmentDetailProps
 
         {/* Linked Documents Section */}
         <Card className="border-border/70 shadow-card">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="font-display flex items-center gap-2 text-base">
               <FileText size={18} />
               Linked Documents
             </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLinkDocOpen(true)}
+              disabled={addDocumentLink.isPending}
+              className="gap-2"
+            >
+              <LinkIcon size={16} /> Link Document
+            </Button>
           </CardHeader>
           <CardContent className="text-sm">
             {documentsLoading ? (
@@ -222,7 +264,12 @@ export default function InvestmentDetail({ investmentId }: InvestmentDetailProps
                     className="flex items-start justify-between rounded-lg border border-border/50 bg-muted/50 p-3"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">{doc.name}</p>
+                      <Link
+                        href={ROUTES.document(doc.id)}
+                        className="truncate font-medium hover:underline"
+                      >
+                        {doc.name}
+                      </Link>
                       {doc.description && (
                         <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                           {doc.description}
@@ -234,16 +281,21 @@ export default function InvestmentDetail({ investmentId }: InvestmentDetailProps
                         <span>{(doc.file_size / 1024 / 1024).toFixed(2)} MB</span>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" asChild className="ml-2 flex-shrink-0">
-                      <a
-                        href={doc.file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="gap-2"
+                    <div className="ml-2 flex flex-shrink-0 gap-1">
+                      <Button variant="ghost" size="sm" asChild>
+                        <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink size={16} />
+                        </a>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleUnlinkDocument(doc.id)}
+                        disabled={removeDocumentLink.isPending}
                       >
-                        <ExternalLink size={16} />
-                      </a>
-                    </Button>
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -253,6 +305,16 @@ export default function InvestmentDetail({ investmentId }: InvestmentDetailProps
           </CardContent>
         </Card>
       </div>
+
+      <LinkDocumentToEntityDialog
+        open={linkDocOpen}
+        onOpenChange={setLinkDocOpen}
+        entityType="investment"
+        entityId={investmentId}
+        linkedDocumentIds={linkedDocuments.map(d => d.id)}
+        onLink={handleLinkDocument}
+        isSubmitting={addDocumentLink.isPending}
+      />
 
       {/* Edit Dialog */}
       <InvestmentForm

@@ -9,7 +9,9 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/useToast';
-import { User, Mail, Shield, Loader2, Download, FileText } from 'lucide-react';
+import { User, Mail, Shield, Loader2, Download, FileText, Tags } from 'lucide-react';
+import Link from 'next/link';
+import { ROUTES } from '@/lib/constants/routes';
 import { useSummaryTransactions } from '@/hooks/useSummaryTransactions';
 import { authApi } from '@/services/api/auth';
 import { format } from 'date-fns';
@@ -146,6 +148,21 @@ const Settings = () => {
             <p className="mt-4 text-sm text-muted-foreground">
               Export all your transactions for backup or analysis in spreadsheet applications.
             </p>
+          </CardContent>
+        </Card>
+
+        {/* Categories shortcut */}
+        <Card className="border-0 shadow-card">
+          <CardHeader>
+            <CardTitle className="font-display flex items-center gap-2">
+              <Tags size={20} /> Categories
+            </CardTitle>
+            <CardDescription>Manage colors, emojis, and category names</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" asChild>
+              <Link href={ROUTES.categories}>Open Categories</Link>
+            </Button>
           </CardContent>
         </Card>
 

@@ -24,9 +24,10 @@ import type {
   CreateGoalData,
   UpdateGoalData,
   GoalPriority,
+  GoalStatus,
   GoalWithFunding,
 } from '@/types/goal-types';
-import { GOAL_PRIORITY_LABELS } from '@/types/goal-types';
+import { GOAL_PRIORITY_LABELS, GOAL_STATUS_LABELS } from '@/types/goal-types';
 import { Loader2 } from 'lucide-react';
 
 interface GoalFormProps {
@@ -39,6 +40,7 @@ interface GoalFormProps {
 }
 
 const GOAL_PRIORITIES: GoalPriority[] = ['low', 'medium', 'high'];
+const GOAL_STATUSES: GoalStatus[] = ['active', 'completed', 'paused'];
 
 function createGoalFormData(initialData?: GoalWithFunding): CreateGoalData {
   if (!initialData) {
@@ -47,6 +49,7 @@ function createGoalFormData(initialData?: GoalWithFunding): CreateGoalData {
       target_amount: 0,
       target_date: new Date().toISOString().split('T')[0],
       priority: 'medium',
+      status: 'active',
       notes: '',
     };
   }
@@ -56,6 +59,7 @@ function createGoalFormData(initialData?: GoalWithFunding): CreateGoalData {
     target_amount: initialData.target_amount,
     target_date: initialData.target_date.split('T')[0],
     priority: initialData.priority,
+    status: initialData.status,
     notes: initialData.notes || '',
   };
 }
@@ -127,29 +131,56 @@ function GoalFormFields({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label>Priority *</Label>
-        <Select
-          value={formData.priority}
-          onValueChange={value =>
-            setFormData(prev => ({
-              ...prev,
-              priority: value as GoalPriority,
-            }))
-          }
-          disabled={isSubmitting}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {GOAL_PRIORITIES.map(priority => (
-              <SelectItem key={priority} value={priority}>
-                {GOAL_PRIORITY_LABELS[priority]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label>Priority *</Label>
+          <Select
+            value={formData.priority}
+            onValueChange={value =>
+              setFormData(prev => ({
+                ...prev,
+                priority: value as GoalPriority,
+              }))
+            }
+            disabled={isSubmitting}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {GOAL_PRIORITIES.map(priority => (
+                <SelectItem key={priority} value={priority}>
+                  {GOAL_PRIORITY_LABELS[priority]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Status *</Label>
+          <Select
+            value={formData.status || 'active'}
+            onValueChange={value =>
+              setFormData(prev => ({
+                ...prev,
+                status: value as GoalStatus,
+              }))
+            }
+            disabled={isSubmitting}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {GOAL_STATUSES.map(status => (
+                <SelectItem key={status} value={status}>
+                  {GOAL_STATUS_LABELS[status]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="space-y-2">

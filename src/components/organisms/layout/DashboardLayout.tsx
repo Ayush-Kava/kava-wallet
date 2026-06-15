@@ -46,6 +46,7 @@ import {
   ChevronsUpDown,
   Palette,
   Plus,
+  Tags,
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -76,6 +77,7 @@ const navGroups = [
     items: [
       { icon: PiggyBank, label: 'Budgets', path: ROUTES.budgets },
       { icon: Target, label: 'Goals', path: ROUTES.goals },
+      { icon: Tags, label: 'Categories', path: ROUTES.categories },
     ],
   },
   {

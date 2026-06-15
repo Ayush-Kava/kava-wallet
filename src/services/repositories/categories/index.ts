@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import type { Category, CreateCategoryData } from '@/types/category-types';
+import type { Category, CreateCategoryData, UpdateCategoryData } from '@/types/category-types';
 import { toCategoryType } from '@/types/category-types';
 
 export const listForUser = async (userId: string): Promise<Category[]> => {
@@ -36,4 +36,48 @@ export const create = async (userId: string, data: CreateCategoryData): Promise<
     },
   });
   return toCategoryType(created);
+};
+
+export const update = async (
+  userId: string,
+  id: string,
+  data: UpdateCategoryData,
+): Promise<Category | null> => {
+  const existing = await prisma.category.findFirst({
+    where: { id, userId },
+  });
+  if (!existing) return null;
+
+  const updated = await prisma.category.update({
+    where: { id },
+    data: {
+      name: data.name,
+      color: data.color,
+      icon: data.icon,
+    },
+  });
+  return toCategoryType(updated);
+};
+
+export const remove = async (userId: string, id: string): Promise<{ ok: true } | { ok: false; reason: string }> => {
+  const existing = await prisma.category.findFirst({
+    where: { id, userId },
+  });
+  if (!existing) return { ok: false, reason: 'not_found' };
+  if (existing.is_default) return { ok: false, reason: 'default_category' };
+
+  const [transactionCount, budgetCount] = await Promise.all([
+    prisma.transaction.count({ where: { categoryId: id, userId } }),
+    prisma.budget.count({ where: { categoryId: id, userId } }),
+  ]);
+
+  if (transactionCount > 0) {
+    return { ok: false, reason: 'has_transactions' };
+  }
+  if (budgetCount > 0) {
+    return { ok: false, reason: 'has_budgets' };
+  }
+
+  await prisma.category.delete({ where: { id } });
+  return { ok: true };
 };

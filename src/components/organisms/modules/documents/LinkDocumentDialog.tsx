@@ -18,6 +18,7 @@ import type { LinkedEntityType } from '@/types/document-types';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useLoans } from '@/hooks/useLoans';
+import { useInvestments } from '@/hooks/useInvestments';
 import { Loader2 } from 'lucide-react';
 
 interface LinkDocumentDialogProps {
@@ -42,6 +43,7 @@ export function LinkDocumentDialog({
   });
   const { accounts, isLoading: accountsLoading } = useAccounts();
   const { data: loans, isLoading: loansLoading } = useLoans().getLoans;
+  const { investments, isLoading: investmentsLoading } = useInvestments();
 
   // Create list of entities based on selected type
   const entities = useMemo(() => {
@@ -63,15 +65,27 @@ export function LinkDocumentDialog({
           label: l.name,
         }));
       case 'credit_card':
-        // Credit cards would typically be part of accounts or a separate list
-        // For now, return empty as we may not have a dedicated credit_card fetch
-        return [];
+        return (accounts || [])
+          .filter(a => a.type === 'credit_card')
+          .map(a => ({
+            id: a.id,
+            label: a.name,
+          }));
+      case 'investment':
+        return (investments || []).map(inv => ({
+          id: inv.id,
+          label: inv.name,
+        }));
       default:
         return [];
     }
-  }, [entityType, transactions, accounts, loans]);
+  }, [entityType, transactions, accounts, loans, investments]);
 
-  const isLoading = transactionsLoading || accountsLoading || loansLoading;
+  const isLoading =
+    transactionsLoading ||
+    accountsLoading ||
+    loansLoading ||
+    (entityType === 'investment' && investmentsLoading);
 
   const handleSubmit = async () => {
     if (!entityId) return;
@@ -110,6 +124,7 @@ export function LinkDocumentDialog({
                 <SelectItem value="loan">Loan</SelectItem>
                 <SelectItem value="emi">EMI</SelectItem>
                 <SelectItem value="account">Account</SelectItem>
+                <SelectItem value="investment">Investment</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -118,7 +133,7 @@ export function LinkDocumentDialog({
             <label className="mb-2 block text-sm font-medium">
               Select {entityType.charAt(0).toUpperCase() + entityType.slice(1)}
             </label>
-            {isLoading && entityType !== 'credit_card' ? (
+            {isLoading ? (
               <div className="flex items-center justify-center py-2">
                 <Loader2 className="mr-2 animate-spin" size={16} />
                 <span className="text-sm text-gray-500">Loading...</span>

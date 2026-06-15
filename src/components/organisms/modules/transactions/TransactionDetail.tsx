@@ -43,7 +43,12 @@ import { useCategories } from '@/hooks/useCategories';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, formatDateStr } from '@/lib/ledger-utils';
 import { documentsApi } from '@/services/api/documents';
+import { useDocuments } from '@/hooks/useDocuments';
+import { LinkDocumentToEntityDialog } from '@/components/organisms/modules/documents/LinkDocumentToEntityDialog';
+import { ROUTES } from '@/lib/constants/routes';
 import type { Transaction } from '@/types/transaction-types';
+import type { LinkedEntityType } from '@/types/document-types';
+import { CategoryOption } from '@/components/molecules/categories/CategoryOption';
 import {
   ArrowLeft,
   Copy,
@@ -144,6 +149,7 @@ function TransactionEditForm({
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const activeCategories = formState.type === 'income' ? incomeCategories : expenseCategories;
+  const selectedCategory = activeCategories.find(c => c.id === formState.categoryId);
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -335,21 +341,22 @@ function TransactionEditForm({
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
+                  {selectedCategory ? (
+                    <CategoryOption
+                      className="min-w-0 flex-1"
+                      name={selectedCategory.name}
+                      icon={selectedCategory.icon}
+                      color={selectedCategory.color}
+                    />
+                  ) : (
+                    <SelectValue placeholder="Select category" />
+                  )}
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">No category</SelectItem>
                   {activeCategories.map(cat => (
                     <SelectItem key={cat.id} value={cat.id}>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="h-3 w-3 rounded-full"
-                          style={{
-                            backgroundColor: cat.color || '#6366F1',
-                          }}
-                        />
-                        {cat.name}
-                      </div>
+                      <CategoryOption name={cat.name} icon={cat.icon} color={cat.color} />
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -434,8 +441,14 @@ export default function TransactionDetail({ transactionId }: TransactionDetailPr
     isDuplicatingTransaction,
   } = useTransactions(1, 7, undefined, { enableList: false });
 
+  const { addDocumentLink, removeDocumentLink } = useDocuments();
+
   // Fetch linked documents for this transaction
-  const { data: linkedDocuments = [], isLoading: documentsLoading } = useQuery({
+  const {
+    data: linkedDocuments = [],
+    isLoading: documentsLoading,
+    refetch: refetchLinkedDocuments,
+  } = useQuery({
     queryKey: ['transaction-documents', transactionId, user?.id],
     queryFn: () => documentsApi.getDocumentsByLinkedEntity(user!.id, transactionId),
     enabled: !!user && !!transactionId,
@@ -444,6 +457,7 @@ export default function TransactionDetail({ transactionId }: TransactionDetailPr
   const [editOpen, setEditOpen] = useState(false);
   const [editSession, setEditSession] = useState(0);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [linkDocOpen, setLinkDocOpen] = useState(false);
 
   const isTransfer = Boolean(transaction?.transfer_id);
 
@@ -465,7 +479,28 @@ export default function TransactionDetail({ transactionId }: TransactionDetailPr
   const handleDelete = async () => {
     if (!transaction) return;
     await deleteTransaction(transaction.id);
-    router.push('/app/transactions');
+    router.push(ROUTES.transactions);
+  };
+
+  const handleLinkDocument = async (
+    documentId: string,
+    entityType: LinkedEntityType,
+    entityId: string,
+  ) => {
+    await addDocumentLink.mutateAsync({
+      document_id: documentId,
+      linked_entity_type: entityType,
+      linked_entity_id: entityId,
+    });
+    await refetchLinkedDocuments();
+  };
+
+  const handleUnlinkDocument = async (documentId: string) => {
+    const doc = linkedDocuments.find(d => d.id === documentId);
+    const link = doc?.links?.find(l => l.linked_entity_id === transactionId);
+    if (!link) return;
+    await removeDocumentLink.mutateAsync({ linkId: link.id, documentId });
+    await refetchLinkedDocuments();
   };
 
   const renderLinkedTransfer = () => {
@@ -516,11 +551,20 @@ export default function TransactionDetail({ transactionId }: TransactionDetailPr
   const renderFutureSections = () => (
     <div className="grid gap-4 md:grid-cols-1">
       <Card className="border-border/70 shadow-card">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="font-display flex items-center gap-2 text-base">
             <FileText size={18} />
             Linked Documents
           </CardTitle>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setLinkDocOpen(true)}
+            disabled={addDocumentLink.isPending}
+            className="gap-2"
+          >
+            <LinkIcon size={16} /> Link Document
+          </Button>
         </CardHeader>
         <CardContent className="text-sm">
           {documentsLoading ? (
@@ -536,7 +580,12 @@ export default function TransactionDetail({ transactionId }: TransactionDetailPr
                   className="flex items-start justify-between rounded-lg border border-border/50 bg-muted/50 p-3"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{doc.name}</p>
+                    <Link
+                      href={ROUTES.document(doc.id)}
+                      className="truncate font-medium hover:underline"
+                    >
+                      {doc.name}
+                    </Link>
                     {doc.description && (
                       <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                         {doc.description}
@@ -548,16 +597,21 @@ export default function TransactionDetail({ transactionId }: TransactionDetailPr
                       <span>{(doc.file_size / 1024 / 1024).toFixed(2)} MB</span>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" asChild className="ml-2 flex-shrink-0">
-                    <a
-                      href={doc.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="gap-2"
+                  <div className="ml-2 flex flex-shrink-0 gap-1">
+                    <Button variant="ghost" size="sm" asChild>
+                      <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink size={16} />
+                      </a>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleUnlinkDocument(doc.id)}
+                      disabled={removeDocumentLink.isPending}
                     >
-                      <ExternalLink size={16} />
-                    </a>
-                  </Button>
+                      <Trash2 size={16} />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -681,19 +735,15 @@ export default function TransactionDetail({ transactionId }: TransactionDetailPr
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Category</p>
-                <div className="flex items-center gap-2">
-                  {currentTransaction.categories?.color && (
-                    <span
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{
-                        backgroundColor: currentTransaction.categories.color,
-                      }}
-                    />
-                  )}
-                  <p className="font-medium">
-                    {currentTransaction.categories?.name || 'Uncategorized'}
-                  </p>
-                </div>
+                {currentTransaction.categories ? (
+                  <CategoryOption
+                    name={currentTransaction.categories.name}
+                    icon={currentTransaction.categories.icon}
+                    color={currentTransaction.categories.color}
+                  />
+                ) : (
+                  <p className="font-medium">Uncategorized</p>
+                )}
               </div>
             </div>
             <Separator className="my-4" />
@@ -726,6 +776,16 @@ export default function TransactionDetail({ transactionId }: TransactionDetailPr
 
         {renderFutureSections()}
       </div>
+
+      <LinkDocumentToEntityDialog
+        open={linkDocOpen}
+        onOpenChange={setLinkDocOpen}
+        entityType="transaction"
+        entityId={transactionId}
+        linkedDocumentIds={linkedDocuments.map(d => d.id)}
+        onLink={handleLinkDocument}
+        isSubmitting={addDocumentLink.isPending}
+      />
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-[540px]">

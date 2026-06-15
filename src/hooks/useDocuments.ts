@@ -159,10 +159,17 @@ export const useDocuments = () => {
   const updateReminder = useMutation({
     mutationFn: (payload: UpdateDocumentReminderData) =>
       documentsApi.updateReminder(userId, payload),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['document-reminders', 'upcoming'],
       });
+      if (variables.document_id) {
+        queryClient.invalidateQueries({
+          queryKey: [...DOCUMENTS_QUERY_KEY, variables.document_id],
+        });
+      } else {
+        queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY_KEY });
+      }
       toast({ title: 'Reminder updated' });
     },
     onError: (error: Error) => {

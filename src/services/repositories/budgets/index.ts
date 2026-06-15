@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import type { Budget, CreateBudgetData } from '@/types/budget-types';
+import type { Budget, CreateBudgetData, UpdateBudgetData } from '@/types/budget-types';
 import { toBudgetType } from '@/types/budget-types';
 
 export const listByUser = async (userId: string): Promise<Budget[]> => {
@@ -26,5 +26,22 @@ export const create = async (userId: string, data: CreateBudgetData): Promise<vo
 
 export const remove = async (userId: string, id: string): Promise<boolean> => {
   const result = await prisma.budget.deleteMany({ where: { id, userId } });
+  return result.count > 0;
+};
+
+export const update = async (
+  userId: string,
+  id: string,
+  data: UpdateBudgetData,
+): Promise<boolean> => {
+  const result = await prisma.budget.updateMany({
+    where: { id, userId },
+    data: {
+      amount: data.amount,
+      period: data.period,
+      start_date: data.start_date ? new Date(data.start_date) : undefined,
+      end_date: data.end_date !== undefined ? (data.end_date ? new Date(data.end_date) : null) : undefined,
+    },
+  });
   return result.count > 0;
 };

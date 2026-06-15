@@ -47,8 +47,9 @@ export const useGoals = () => {
 
   const updateGoalMutation = useMutation({
     mutationFn: (payload: UpdateGoalData) => goalsApi.updateGoal(userId, payload),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: GOALS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: [...GOALS_QUERY_KEY, variables.id] });
       toast({ title: 'Goal updated!' });
     },
     onError: (error: Error) => {

@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/select';
 import { DatePicker } from '@/components/molecules/common/DatePicker';
 import { CreateCategoryDialog } from '@/components/molecules/common/CreateCategoryDialog';
+import { CategorySelect } from '@/components/molecules/categories/CategorySelect';
 import { AccountFormDialog } from '@/components/organisms/modules/accounts/AccountFormDialog';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useAccounts } from '@/hooks/useAccounts';
@@ -306,29 +307,24 @@ function TransactionFormBody({
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Category</Label>
-                <Select
+                <CategorySelect
+                  categories={categories}
                   value={categoryId}
-                  onValueChange={v =>
-                    v === 'create_new' ? setCreateCategoryOpen(true) : setCategoryId(v)
-                  }
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Optional" />
-                  </SelectTrigger>
-                  <SelectContent>
+                  onValueChange={v => {
+                    if (v === 'create_new') setCreateCategoryOpen(true);
+                    else setCategoryId(v);
+                  }}
+                  placeholder="Optional"
+                  triggerClassName="h-9"
+                  extraItems={
                     <SelectItem value="create_new">
                       <span className="flex items-center gap-2 text-primary">
                         <Plus className="h-3.5 w-3.5" />
                         New category
                       </span>
                     </SelectItem>
-                    {categories.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  }
+                />
               </div>
             </div>
           )}

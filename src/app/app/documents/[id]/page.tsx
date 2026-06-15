@@ -8,8 +8,10 @@ import { ProtectedRoute } from '@/components/molecules/common/ProtectedRoute';
 import { useDocuments } from '@/hooks/useDocuments';
 import { ReminderForm } from '@/components/organisms/modules/documents/ReminderForm';
 import { LinkDocumentDialog } from '@/components/organisms/modules/documents/LinkDocumentDialog';
+import { DocumentEditDialog } from '@/components/organisms/modules/documents/DocumentEditDialog';
 import { DocumentPreview } from '@/components/organisms/modules/documents/DocumentPreview';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -22,26 +24,32 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Loader2, Trash2, Archive, Link2, Bell, ArrowLeft } from 'lucide-react';
+import { Loader2, Trash2, Archive, Link2, Bell, ArrowLeft, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { ROUTES } from '@/lib/constants/routes';
+import type { DocumentReminder, UpdateDocumentReminderData, CreateDocumentReminderData } from '@/types/document-types';
+import { cn } from '@/lib/utils';
 
 function DocumentDetailInner({ documentId }: { documentId: string }) {
   const router = useRouter();
   const {
     useDocument,
+    updateDocument,
     archiveDocument,
     deleteDocument,
     addDocumentLink,
     removeDocumentLink,
     createReminder,
+    updateReminder,
     deleteReminder,
   } = useDocuments();
 
   const { data: document, isLoading } = useDocument(documentId);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
+  const [editingReminder, setEditingReminder] = useState<DocumentReminder | null>(null);
   const [linkOpen, setLinkOpen] = useState(false);
   const [deletingReminderId, setDeletingReminderId] = useState<string | null>(null);
 
@@ -101,6 +109,23 @@ function DocumentDetailInner({ documentId }: { documentId: string }) {
     await createReminder.mutateAsync(data);
   };
 
+  const handleUpdateReminder = async (
+    data: CreateDocumentReminderData | UpdateDocumentReminderData,
+  ) => {
+    if ('id' in data) {
+      await updateReminder.mutateAsync(data);
+      setEditingReminder(null);
+    }
+  };
+
+  const handleToggleReminderComplete = async (reminder: DocumentReminder) => {
+    await updateReminder.mutateAsync({
+      id: reminder.id,
+      document_id: documentId,
+      completed: !reminder.completed,
+    });
+  };
+
   const handleDeleteReminder = async (reminderId: string) => {
     await deleteReminder.mutateAsync(reminderId);
     setDeletingReminderId(null);
@@ -113,6 +138,13 @@ function DocumentDetailInner({ documentId }: { documentId: string }) {
       actions={
         <div className="flex flex-wrap gap-2">
           {backButton}
+          <Button
+            variant="outline"
+            onClick={() => setEditOpen(true)}
+            className="inline-flex items-center gap-2"
+          >
+            <Pencil size={16} /> Edit
+          </Button>
           <Button
             variant="outline"
             onClick={() => setReminderOpen(true)}
@@ -244,35 +276,70 @@ function DocumentDetailInner({ documentId }: { documentId: string }) {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {document.reminders.map(reminder => (
-                  <div
-                    key={reminder.id}
-                    className="rounded border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{reminder.title}</p>
-                        <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                          {reminder.reminder_type.replace('_', ' ')} on{' '}
-                          {format(new Date(reminder.reminder_date), 'MMM dd, yyyy')}
-                        </p>
-                        {reminder.description && (
-                          <p className="mt-2 text-xs text-gray-700 dark:text-gray-300">
-                            {reminder.description}
-                          </p>
-                        )}
+                {[...document.reminders]
+                  .sort((a, b) => Number(a.completed) - Number(b.completed))
+                  .map(reminder => (
+                    <div
+                      key={reminder.id}
+                      className={cn(
+                        'rounded border p-3',
+                        reminder.completed
+                          ? 'border-muted bg-muted/50 opacity-75'
+                          : 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20',
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex flex-1 items-start gap-3">
+                          <Checkbox
+                            checked={reminder.completed}
+                            onCheckedChange={() => handleToggleReminderComplete(reminder)}
+                            disabled={updateReminder.isPending}
+                            className="mt-0.5"
+                          />
+                          <div className="flex-1">
+                            <p
+                              className={cn(
+                                'text-sm font-medium',
+                                reminder.completed && 'text-muted-foreground line-through',
+                              )}
+                            >
+                              {reminder.title}
+                            </p>
+                            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                              {reminder.reminder_type.replace('_', ' ')} on{' '}
+                              {format(new Date(reminder.reminder_date), 'MMM dd, yyyy')}
+                              {reminder.completed && (
+                                <span className="ml-2 font-medium text-success">Completed</span>
+                              )}
+                            </p>
+                            {reminder.description && (
+                              <p className="mt-2 text-xs text-gray-700 dark:text-gray-300">
+                                {reminder.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditingReminder(reminder)}
+                            disabled={updateReminder.isPending}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setDeletingReminderId(reminder.id)}
+                            disabled={deleteReminder.isPending}
+                          >
+                            Delete
+                          </Button>
+                        </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setDeletingReminderId(reminder.id)}
-                        disabled={deleteReminder.isPending}
-                      >
-                        Delete
-                      </Button>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </CardContent>
           </Card>
@@ -280,12 +347,33 @@ function DocumentDetailInner({ documentId }: { documentId: string }) {
       </div>
 
       {/* Dialogs */}
+      <DocumentEditDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        document={document}
+        onSubmit={data => updateDocument.mutateAsync(data)}
+        isSubmitting={updateDocument.isPending}
+      />
+
       <ReminderForm
         open={reminderOpen}
         onOpenChange={setReminderOpen}
         documentId={documentId}
         onSubmit={handleCreateReminder}
         isSubmitting={createReminder.isPending}
+        mode="create"
+      />
+
+      <ReminderForm
+        open={Boolean(editingReminder)}
+        onOpenChange={open => {
+          if (!open) setEditingReminder(null);
+        }}
+        documentId={documentId}
+        onSubmit={handleUpdateReminder}
+        isSubmitting={updateReminder.isPending}
+        mode="edit"
+        initialData={editingReminder ?? undefined}
       />
 
       <LinkDocumentDialog

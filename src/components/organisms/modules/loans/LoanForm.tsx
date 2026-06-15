@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/select';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useCategories } from '@/hooks/useCategories';
+import { CategoryOption } from '@/components/molecules/categories/CategoryOption';
 import type { CreateLoanData } from '@/types/loan-types';
 import type { Account } from '@/types/account-types';
 import type { Category } from '@/types/category-types';
@@ -51,20 +52,6 @@ const loanFormSchema = z.object({
 });
 
 type LoanFormData = z.infer<typeof loanFormSchema>;
-
-const CategoryColorDot = ({ color }: { color?: string }) => (
-  <span
-    className="h-3 w-3 shrink-0 rounded-full"
-    style={{ backgroundColor: color || '#6366F1' }}
-  />
-);
-
-const CategoryOption = ({ name, color }: { name: string; color?: string }) => (
-  <span className="flex items-center gap-2">
-    <CategoryColorDot color={color} />
-    <span>{name}</span>
-  </span>
-);
 
 interface LoanFormProps {
   onSubmit: (data: CreateLoanData) => Promise<void>;
@@ -277,7 +264,9 @@ export const LoanForm = ({ onSubmit, isLoading = false, embedded = false }: Loan
                         <SelectTrigger>
                           {selectedCategory ? (
                             <CategoryOption
+                              className="min-w-0 flex-1"
                               name={selectedCategory.name}
+                              icon={selectedCategory.icon}
                               color={selectedCategory.color}
                             />
                           ) : (
@@ -295,7 +284,11 @@ export const LoanForm = ({ onSubmit, isLoading = false, embedded = false }: Loan
                       >
                         {expenseCategories.map((cat: Category) => (
                           <SelectItem key={cat.id} value={cat.id}>
-                            <CategoryOption name={cat.name} color={cat.color} />
+                            <CategoryOption
+                              name={cat.name}
+                              icon={cat.icon}
+                              color={cat.color}
+                            />
                           </SelectItem>
                         ))}
                       </SelectContent>

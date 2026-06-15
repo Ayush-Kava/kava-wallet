@@ -40,7 +40,8 @@ import { useGoals } from '@/hooks/useGoals';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useInvestments } from '@/hooks/useInvestments';
 import type { UpdateGoalData, CreateGoalData, CreateGoalFundingData } from '@/types/goal-types';
-import { GOAL_PRIORITY_LABELS, GOAL_PRIORITY_COLORS } from '@/types/goal-types';
+import { GOAL_PRIORITY_LABELS, GOAL_PRIORITY_COLORS, GOAL_STATUS_LABELS } from '@/types/goal-types';
+import type { GoalStatus } from '@/types/goal-types';
 import {
   ArrowLeft,
   Pencil,
@@ -51,6 +52,9 @@ import {
   Plus,
   Wallet,
   Target,
+  CheckCircle2,
+  PauseCircle,
+  PlayCircle,
 } from 'lucide-react';
 import { formatDateStr } from '@/lib/ledger-utils';
 
@@ -119,6 +123,10 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
     await removeFunding(fundingId);
   };
 
+  const handleStatusChange = async (status: GoalStatus) => {
+    await updateGoal({ id: goalId, status });
+  };
+
   if (isLoading || !goal) {
     return (
       <DashboardLayout title="Goal Details" description="Loading…">
@@ -154,6 +162,50 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
           >
             <Pencil size={16} /> Edit
           </Button>
+          {goal.status === 'active' && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleStatusChange('completed')}
+                disabled={isUpdatingGoal}
+                className="gap-2"
+              >
+                <CheckCircle2 size={16} /> Mark Complete
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleStatusChange('paused')}
+                disabled={isUpdatingGoal}
+                className="gap-2"
+              >
+                <PauseCircle size={16} /> Pause
+              </Button>
+            </>
+          )}
+          {goal.status === 'paused' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleStatusChange('active')}
+              disabled={isUpdatingGoal}
+              className="gap-2"
+            >
+              <PlayCircle size={16} /> Resume
+            </Button>
+          )}
+          {goal.status === 'completed' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleStatusChange('active')}
+              disabled={isUpdatingGoal}
+              className="gap-2"
+            >
+              <PlayCircle size={16} /> Reopen
+            </Button>
+          )}
           <Button
             variant="destructive"
             size="sm"
@@ -176,6 +228,7 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
                 <Badge className={GOAL_PRIORITY_COLORS[goal.priority]}>
                   {GOAL_PRIORITY_LABELS[goal.priority]}
                 </Badge>
+                <Badge variant="secondary">{GOAL_STATUS_LABELS[goal.status]}</Badge>
                 {isOverdue && <Badge variant="destructive">Overdue</Badge>}
               </div>
             </div>

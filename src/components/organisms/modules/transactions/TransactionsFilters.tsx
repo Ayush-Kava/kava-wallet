@@ -7,6 +7,7 @@ import { Button } from '@/components/atoms/ui/button';
 import { ChevronDown } from 'lucide-react';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useCategories } from '@/hooks/useCategories';
+import { CategoryIcon } from '@/components/molecules/categories/CategoryIcon';
 
 type TransactionsFiltersProps = {
   selectedAccountId: string | null;
@@ -56,6 +57,7 @@ export default function TransactionsFilters({
     ...(categories || []).map(category => ({
       id: category.id,
       label: category.name,
+      icon: <CategoryIcon icon={category.icon} color={category.color} size="sm" />,
       onClick: () => onCategoryChange(category.id, category.name),
     })),
   ];
