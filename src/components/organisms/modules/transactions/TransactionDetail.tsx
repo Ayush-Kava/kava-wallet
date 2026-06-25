@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
+import { AppLink } from '@/components/atoms/AppLink';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/organisms/layout/DashboardLayout';
 import { DatePicker } from '@/components/molecules/common/DatePicker';
@@ -424,12 +424,29 @@ function TransactionEditForm({
   );
 }
 
+interface TransactionEditFormLoaderProps extends Omit<
+  TransactionEditFormProps,
+  'accounts' | 'incomeCategories' | 'expenseCategories'
+> {}
+
+function TransactionEditFormLoader(props: TransactionEditFormLoaderProps) {
+  const { accounts } = useAccounts();
+  const { incomeCategories, expenseCategories } = useCategories();
+
+  return (
+    <TransactionEditForm
+      {...props}
+      accounts={accounts}
+      incomeCategories={incomeCategories}
+      expenseCategories={expenseCategories}
+    />
+  );
+}
+
 export default function TransactionDetail({ transactionId }: TransactionDetailProps) {
   const router = useRouter();
   const { user } = useAuth();
   const { transaction, linkedTransactions, isLoading, refetch } = useTransactionById(transactionId);
-  const { accounts } = useAccounts();
-  const { incomeCategories, expenseCategories } = useCategories();
   const {
     updateTransaction,
     updateTransfer,
@@ -441,7 +458,7 @@ export default function TransactionDetail({ transactionId }: TransactionDetailPr
     isDuplicatingTransaction,
   } = useTransactions(1, 7, undefined, { enableList: false });
 
-  const { addDocumentLink, removeDocumentLink } = useDocuments();
+  const { addDocumentLink, removeDocumentLink } = useDocuments({ loadList: false });
 
   // Fetch linked documents for this transaction
   const {
@@ -516,9 +533,9 @@ export default function TransactionDetail({ transactionId }: TransactionDetailPr
           <CardTitle className="font-display text-base">Linked Transfer</CardTitle>
           {otherSide && (
             <Button variant="ghost" size="sm" asChild>
-              <Link href={`/app/transactions/${otherSide.id}`} className="gap-2">
+              <AppLink href={ROUTES.transaction(otherSide.id)} className="gap-2">
                 <LinkIcon size={16} /> View other side
-              </Link>
+              </AppLink>
             </Button>
           )}
         </CardHeader>
@@ -580,12 +597,12 @@ export default function TransactionDetail({ transactionId }: TransactionDetailPr
                   className="flex items-start justify-between rounded-lg border border-border/50 bg-muted/50 p-3"
                 >
                   <div className="min-w-0 flex-1">
-                    <Link
+                    <AppLink
                       href={ROUTES.document(doc.id)}
                       className="truncate font-medium hover:underline"
                     >
                       {doc.name}
-                    </Link>
+                    </AppLink>
                     {doc.description && (
                       <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                         {doc.description}
@@ -648,9 +665,9 @@ export default function TransactionDetail({ transactionId }: TransactionDetailPr
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link href="/app/transactions" className="gap-2">
+            <AppLink href={ROUTES.transactions} className="gap-2">
               <ArrowLeft size={16} /> Back to list
-            </Link>
+            </AppLink>
           </Button>
           <Button
             variant="outline"
@@ -790,14 +807,11 @@ export default function TransactionDetail({ transactionId }: TransactionDetailPr
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-[540px]">
           {transaction && editOpen && (
-            <TransactionEditForm
+            <TransactionEditFormLoader
               key={`${transaction.id}-${editSession}`}
               transaction={transaction}
               transferEntries={transferEntries}
               isTransfer={isTransfer}
-              accounts={accounts}
-              incomeCategories={incomeCategories}
-              expenseCategories={expenseCategories}
               isUpdatingTransaction={isUpdatingTransaction}
               isUpdatingTransfer={isUpdatingTransfer}
               updateTransaction={updateTransaction}

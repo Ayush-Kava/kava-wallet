@@ -387,7 +387,7 @@ export default function CreditCards() {
               <div className="py-12 text-center text-muted-foreground">
                 <CreditCard size={48} className="mx-auto mb-4 opacity-50" />
                 <p className="mb-4">No credit cards yet. Add your first card to get started.</p>
-                <Button onClick={() => setDialogOpen(true)}>
+                <Button onClick={() => setAccountFormOpen(true)}>
                   <Plus size={18} /> Add Credit Card
                 </Button>
               </div>
@@ -497,6 +497,8 @@ export default function CreditCards() {
         onOpenChange={setAccountFormOpen}
         onSubmit={handleCreateAccount}
         isSubmitting={isCreatingAccount}
+        defaultType="credit_card"
+        title="New Credit Card"
       />
     </DashboardLayout>
   );

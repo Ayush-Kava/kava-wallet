@@ -1,7 +1,7 @@
 'use client';
 
 import { type ReactNode, useMemo } from 'react';
-import Link from 'next/link';
+import { AppLink } from '@/components/atoms/AppLink';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/contexts/AuthContext';
@@ -121,7 +121,7 @@ const NavLink = ({
   onClick?: () => void;
   className?: string;
 }) => (
-  <Link
+  <AppLink
     href={href}
     onClick={onClick}
     className={cn(
@@ -134,7 +134,7 @@ const NavLink = ({
   >
     <Icon className="h-4 w-4 shrink-0" />
     <span className="truncate">{label}</span>
-  </Link>
+  </AppLink>
 );
 
 const DashboardLayout = ({ children, title, description, actions }: DashboardLayoutProps) => {

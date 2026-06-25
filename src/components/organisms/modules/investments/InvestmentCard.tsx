@@ -1,8 +1,9 @@
-import Link from 'next/link';
+import { AppLink } from '@/components/atoms/AppLink';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { Investment } from '@/types/investment-types';
 import { INVESTMENT_TYPE_LABELS } from '@/types/investment-types';
+import { ROUTES } from '@/lib/constants/routes';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
 interface InvestmentCardProps {
@@ -26,7 +27,7 @@ export function InvestmentCard({ investment }: InvestmentCardProps) {
   const isPositive = returns >= 0;
 
   return (
-    <Link href={`/investments/${investment.id}`}>
+    <AppLink href={ROUTES.investment(investment.id)}>
       <Card className="cursor-pointer transition-shadow hover:shadow-lg">
         <CardHeader>
           <div className="flex items-start justify-between">
@@ -87,6 +88,6 @@ export function InvestmentCard({ investment }: InvestmentCardProps) {
           )}
         </CardContent>
       </Card>
-    </Link>
+    </AppLink>
   );
 }

@@ -17,12 +17,19 @@ const kindToType = (kind: AccountKind): AccountType => kind as AccountType;
 const dateStr = (d: Date | null | undefined) => d?.toISOString().split('T')[0] ?? null;
 
 type RegistryRow = {
+  userId: number;
   publicId: string;
   kind: AccountKind;
   referenceId: number;
 };
 
 type AccountDetails = Omit<Account, 'id' | 'type'>;
+
+type AccountSummary = { name: string; type: string; balance: number };
+
+const accountDetailKey = (kind: AccountKind, referenceId: number) => `${kind}:${referenceId}`;
+
+const uniqueIds = (ids: number[]) => [...new Set(ids)];
 
 const mapBankRow = (
   row: BankAccount & { bank: { publicId: string; name: string } },
@@ -88,49 +95,157 @@ const mapCreditCardRow = (
   updated_at: row.updatedAt.toISOString(),
 });
 
+async function loadAccountDetailsForRegistry(
+  registry: RegistryRow,
+  maskSensitive: boolean,
+): Promise<AccountDetails | null> {
+  switch (registry.kind) {
+    case 'bank': {
+      const row = await prisma.bankAccount.findFirst({
+        where: { id: registry.referenceId, userId: registry.userId },
+        include: { bank: true },
+      });
+      return row ? mapBankRow(row, maskSensitive) : null;
+    }
+    case 'cash': {
+      const row = await prisma.cashAccount.findFirst({
+        where: { id: registry.referenceId, userId: registry.userId },
+      });
+      return row ? mapCashRow(row, maskSensitive) : null;
+    }
+    case 'wallet': {
+      const row = await prisma.walletAccount.findFirst({
+        where: { id: registry.referenceId, userId: registry.userId },
+      });
+      return row ? mapWalletRow(row, maskSensitive) : null;
+    }
+    case 'credit_card': {
+      const row = await prisma.creditCard.findFirst({
+        where: { id: registry.referenceId, userId: registry.userId },
+        include: { bank: true },
+      });
+      return row ? mapCreditCardRow(row, maskSensitive) : null;
+    }
+    default:
+      return null;
+  }
+}
+
 async function batchLoadDetails(
   registries: RegistryRow[],
   maskSensitive: boolean,
-): Promise<Map<number, AccountDetails>> {
-  const result = new Map<number, AccountDetails>();
+): Promise<Map<string, AccountDetails>> {
+  const result = new Map<string, AccountDetails>();
   if (!registries.length) return result;
 
   const idsByKind = {
-    bank: [] as number[],
-    cash: [] as number[],
-    wallet: [] as number[],
-    credit_card: [] as number[],
+    bank: uniqueIds(registries.filter(r => r.kind === 'bank').map(r => r.referenceId)),
+    cash: uniqueIds(registries.filter(r => r.kind === 'cash').map(r => r.referenceId)),
+    wallet: uniqueIds(registries.filter(r => r.kind === 'wallet').map(r => r.referenceId)),
+    credit_card: uniqueIds(registries.filter(r => r.kind === 'credit_card').map(r => r.referenceId)),
   };
-
-  for (const reg of registries) {
-    idsByKind[reg.kind].push(reg.referenceId);
-  }
+  const userId = registries[0]?.userId;
 
   const [bankRows, cashRows, walletRows, cardRows] = await Promise.all([
     idsByKind.bank.length
       ? prisma.bankAccount.findMany({
-          where: { id: { in: idsByKind.bank } },
+          where: { id: { in: idsByKind.bank }, userId },
           include: { bank: true },
         })
       : Promise.resolve([]),
     idsByKind.cash.length
-      ? prisma.cashAccount.findMany({ where: { id: { in: idsByKind.cash } } })
+      ? prisma.cashAccount.findMany({ where: { id: { in: idsByKind.cash }, userId } })
       : Promise.resolve([]),
     idsByKind.wallet.length
-      ? prisma.walletAccount.findMany({ where: { id: { in: idsByKind.wallet } } })
+      ? prisma.walletAccount.findMany({ where: { id: { in: idsByKind.wallet }, userId } })
       : Promise.resolve([]),
     idsByKind.credit_card.length
       ? prisma.creditCard.findMany({
-          where: { id: { in: idsByKind.credit_card } },
+          where: { id: { in: idsByKind.credit_card }, userId },
           include: { bank: true },
         })
       : Promise.resolve([]),
   ]);
 
-  for (const row of bankRows) result.set(row.id, mapBankRow(row, maskSensitive));
-  for (const row of cashRows) result.set(row.id, mapCashRow(row, maskSensitive));
-  for (const row of walletRows) result.set(row.id, mapWalletRow(row, maskSensitive));
-  for (const row of cardRows) result.set(row.id, mapCreditCardRow(row, maskSensitive));
+  for (const row of bankRows) {
+    result.set(accountDetailKey('bank', row.id), mapBankRow(row, maskSensitive));
+  }
+  for (const row of cashRows) {
+    result.set(accountDetailKey('cash', row.id), mapCashRow(row, maskSensitive));
+  }
+  for (const row of walletRows) {
+    result.set(accountDetailKey('wallet', row.id), mapWalletRow(row, maskSensitive));
+  }
+  for (const row of cardRows) {
+    result.set(accountDetailKey('credit_card', row.id), mapCreditCardRow(row, maskSensitive));
+  }
+
+  return result;
+}
+
+/** Lightweight name/balance lookup for transaction labels and summaries. */
+async function batchLoadSummaries(registries: RegistryRow[]): Promise<Map<string, AccountSummary>> {
+  const result = new Map<string, AccountSummary>();
+  if (!registries.length) return result;
+
+  const idsByKind = {
+    bank: uniqueIds(registries.filter(r => r.kind === 'bank').map(r => r.referenceId)),
+    cash: uniqueIds(registries.filter(r => r.kind === 'cash').map(r => r.referenceId)),
+    wallet: uniqueIds(registries.filter(r => r.kind === 'wallet').map(r => r.referenceId)),
+    credit_card: uniqueIds(registries.filter(r => r.kind === 'credit_card').map(r => r.referenceId)),
+  };
+  const userId = registries[0]?.userId;
+  const summaryByKey = new Map<string, { name: string; balance: number }>();
+
+  const [bankRows, cashRows, walletRows, cardRows] = await Promise.all([
+    idsByKind.bank.length
+      ? prisma.bankAccount.findMany({
+          where: { id: { in: idsByKind.bank }, userId },
+          select: { id: true, name: true, balance: true },
+        })
+      : Promise.resolve([]),
+    idsByKind.cash.length
+      ? prisma.cashAccount.findMany({
+          where: { id: { in: idsByKind.cash }, userId },
+          select: { id: true, name: true, balance: true },
+        })
+      : Promise.resolve([]),
+    idsByKind.wallet.length
+      ? prisma.walletAccount.findMany({
+          where: { id: { in: idsByKind.wallet }, userId },
+          select: { id: true, name: true, balance: true },
+        })
+      : Promise.resolve([]),
+    idsByKind.credit_card.length
+      ? prisma.creditCard.findMany({
+          where: { id: { in: idsByKind.credit_card }, userId },
+          select: { id: true, name: true, outstandingBalance: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  for (const row of bankRows) {
+    summaryByKey.set(`bank:${row.id}`, { name: row.name, balance: Number(row.balance) });
+  }
+  for (const row of cashRows) {
+    summaryByKey.set(`cash:${row.id}`, { name: row.name, balance: Number(row.balance) });
+  }
+  for (const row of walletRows) {
+    summaryByKey.set(`wallet:${row.id}`, { name: row.name, balance: Number(row.balance) });
+  }
+  for (const row of cardRows) {
+    summaryByKey.set(`credit_card:${row.id}`, {
+      name: row.name,
+      balance: Number(row.outstandingBalance),
+    });
+  }
+
+  for (const reg of registries) {
+    const summary = summaryByKey.get(accountDetailKey(reg.kind, reg.referenceId));
+    if (summary) {
+      result.set(reg.publicId, { name: summary.name, type: reg.kind, balance: summary.balance });
+    }
+  }
 
   return result;
 }
@@ -154,9 +269,12 @@ export const listByUser = async (userId: number): Promise<Account[]> => {
     select: { publicId: true, kind: true, referenceId: true },
   });
 
-  const detailsMap = await batchLoadDetails(registries, true);
-  return registries
-    .map(reg => registryToAccount(reg, detailsMap.get(reg.referenceId)))
+  const rows: RegistryRow[] = registries.map(reg => ({ userId, ...reg }));
+  const detailsMap = await batchLoadDetails(rows, true);
+  return rows
+    .map(reg =>
+      registryToAccount(reg, detailsMap.get(accountDetailKey(reg.kind, reg.referenceId))),
+    )
     .filter((a): a is Account => a !== null);
 };
 
@@ -171,8 +289,9 @@ export const getById = async (
   });
   if (!registry) return null;
 
-  const detailsMap = await batchLoadDetails([registry], !options?.revealSensitive);
-  return registryToAccount(registry, detailsMap.get(registry.referenceId));
+  const row: RegistryRow = { userId, ...registry };
+  const details = await loadAccountDetailsForRegistry(row, !options?.revealSensitive);
+  return registryToAccount(row, details ?? undefined);
 };
 
 export const create = async (userId: number, data: CreateAccountInput): Promise<void> => {
@@ -457,23 +576,15 @@ export const listTransactions = async (
 export const getAccountSummaryByPublicIds = async (
   userId: number,
   publicIds: string[],
-): Promise<Map<string, { name: string; type: string; balance: number }>> => {
-  const unique = [...new Set(publicIds)];
-  const map = new Map<string, { name: string; type: string; balance: number }>();
-  if (!unique.length) return map;
+): Promise<Map<string, AccountSummary>> => {
+  const unique = [...new Set(publicIds.filter(Boolean))];
+  if (!unique.length) return new Map();
 
   const registries = await prisma.account.findMany({
     where: { userId, publicId: { in: unique }, ...ACTIVE_ACCOUNT },
     select: { publicId: true, kind: true, referenceId: true },
   });
 
-  const detailsMap = await batchLoadDetails(registries, true);
-  for (const reg of registries) {
-    const details = detailsMap.get(reg.referenceId);
-    if (details) {
-      map.set(reg.publicId, { name: details.name, type: reg.kind, balance: details.balance });
-    }
-  }
-
-  return map;
+  const rows: RegistryRow[] = registries.map(reg => ({ userId, ...reg }));
+  return batchLoadSummaries(rows);
 };

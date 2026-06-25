@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { AppLink } from '@/components/atoms/AppLink';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/atoms/ui/table';
 import { calculateLedgerEntries, formatCurrency, formatDateStr } from '@/lib/ledger-utils';
+import { ROUTES } from '@/lib/constants/routes';
 import type { LedgerEntry } from '@/lib/ledger-utils';
 import type { Transaction } from '@/types/transaction-types';
 import { ArrowLeftRight } from 'lucide-react';
@@ -135,13 +136,15 @@ export default function AccountLedgerTable({
                           'linked account'}
                       </span>
                       {transferPartners?.[entry.transaction.transfer_id] && (
-                        <Link
-                          href={`/app/accounts/${transferPartners[entry.transaction.transfer_id].accountId}`}
+                        <AppLink
+                          href={ROUTES.account(
+                            transferPartners[entry.transaction.transfer_id].accountId,
+                          )}
                           className="font-medium underline-offset-4 hover:underline"
                           onClick={e => e.stopPropagation()}
                         >
                           View account
-                        </Link>
+                        </AppLink>
                       )}
                     </div>
                   )}

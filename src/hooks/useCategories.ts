@@ -5,15 +5,21 @@ import { useToast } from '@/hooks/useToast';
 import { categoriesApi } from '@/services/api/categories';
 import type { CreateCategoryData, UpdateCategoryData } from '@/types/category-types';
 
-export const useCategories = () => {
+type UseCategoriesOptions = {
+  /** When false, skips the list query (mutations still work). Default: true */
+  enabled?: boolean;
+};
+
+export const useCategories = (options?: UseCategoriesOptions) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const listEnabled = (options?.enabled ?? true) && !!user;
 
   const { data: categories, isLoading } = useQuery({
     queryKey: ['categories', user?.id],
     queryFn: () => categoriesApi.getCategories(),
-    enabled: !!user,
+    enabled: listEnabled,
   });
 
   const createCategory = useMutation({

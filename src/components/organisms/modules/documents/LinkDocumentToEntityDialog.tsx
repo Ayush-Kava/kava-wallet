@@ -28,15 +28,14 @@ interface LinkDocumentToEntityDialogProps {
   isSubmitting?: boolean;
 }
 
-export function LinkDocumentToEntityDialog({
-  open,
-  onOpenChange,
+function LinkDocumentToEntityDialogContent({
   entityType,
   entityId,
   linkedDocumentIds = [],
   onLink,
+  onOpenChange,
   isSubmitting = false,
-}: LinkDocumentToEntityDialogProps) {
+}: Omit<LinkDocumentToEntityDialogProps, 'open'>) {
   const [documentId, setDocumentId] = useState('');
   const { getDocuments } = useDocuments();
   const { data: documents = [], isLoading } = getDocuments;
@@ -54,62 +53,76 @@ export function LinkDocumentToEntityDialog({
   };
 
   return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Link Document</DialogTitle>
+        <DialogDescription>
+          Select a document from your vault to link to this {entityType.replace('_', ' ')}
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="space-y-4">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-4">
+            <Loader2 className="mr-2 animate-spin" size={16} />
+            <span className="text-sm text-muted-foreground">Loading documents...</span>
+          </div>
+        ) : (
+          <div>
+            <label className="mb-2 block text-sm font-medium">Document</label>
+            <Select value={documentId} onValueChange={setDocumentId} disabled={isSubmitting}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a document" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableDocuments.length > 0 ? (
+                  availableDocuments.map(doc => (
+                    <SelectItem key={doc.id} value={doc.id}>
+                      {doc.name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                    No documents available to link
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              onOpenChange(false);
+              setDocumentId('');
+            }}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={isSubmitting || !documentId}>
+            {isSubmitting ? 'Linking...' : 'Link Document'}
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function LinkDocumentToEntityDialog({
+  open,
+  onOpenChange,
+  ...contentProps
+}: LinkDocumentToEntityDialogProps) {
+  return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[520px]">
-        <DialogHeader>
-          <DialogTitle>Link Document</DialogTitle>
-          <DialogDescription>
-            Select a document from your vault to link to this {entityType.replace('_', ' ')}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="mr-2 animate-spin" size={16} />
-              <span className="text-sm text-muted-foreground">Loading documents...</span>
-            </div>
-          ) : (
-            <div>
-              <label className="mb-2 block text-sm font-medium">Document</label>
-              <Select value={documentId} onValueChange={setDocumentId} disabled={isSubmitting}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a document" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableDocuments.length > 0 ? (
-                    availableDocuments.map(doc => (
-                      <SelectItem key={doc.id} value={doc.id}>
-                        {doc.name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                      No documents available to link
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <div className="flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                onOpenChange(false);
-                setDocumentId('');
-              }}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting || !documentId}>
-              {isSubmitting ? 'Linking...' : 'Link Document'}
-            </Button>
-          </div>
-        </div>
+        {open ? (
+          <LinkDocumentToEntityDialogContent onOpenChange={onOpenChange} {...contentProps} />
+        ) : null}
       </DialogContent>
     </Dialog>
   );

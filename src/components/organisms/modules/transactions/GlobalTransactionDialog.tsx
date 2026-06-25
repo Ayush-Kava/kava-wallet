@@ -12,6 +12,8 @@ export function GlobalTransactionDialog() {
     setTransactionDialogOpen,
   } = useUiStore();
 
+  if (!transactionDialogOpen) return null;
+
   return (
     <TransactionFormDialog
       open={transactionDialogOpen}

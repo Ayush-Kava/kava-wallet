@@ -131,11 +131,13 @@ function RecurringPageInner() {
               {editingRule ? 'Edit recurring rule' : 'New recurring rule'}
             </DialogTitle>
           </DialogHeader>
-          <RecurringForm
-            initialRule={editingRule}
-            onSubmit={handleSubmit}
-            isSubmitting={isSubmitting || createRule.isPending || updateRule.isPending}
-          />
+          {formOpen ? (
+            <RecurringForm
+              initialRule={editingRule}
+              onSubmit={handleSubmit}
+              isSubmitting={isSubmitting || createRule.isPending || updateRule.isPending}
+            />
+          ) : null}
         </DialogContent>
       </Dialog>
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import { AppLink } from '@/components/atoms/AppLink';
 import { useParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/organisms/layout/DashboardLayout';
 import { useDocuments } from '@/hooks/useDocuments';
@@ -55,9 +55,9 @@ function DocumentDetailInner({ documentId }: { documentId: string }) {
 
   const backButton = (
     <Button variant="outline" size="sm" asChild>
-      <Link href={ROUTES.documents} className="gap-2">
+      <AppLink href={ROUTES.documents} className="gap-2">
         <ArrowLeft size={16} /> Back
-      </Link>
+      </AppLink>
     </Button>
   );
 
@@ -442,9 +442,9 @@ function DocumentDetailPage() {
         description=""
         actions={
           <Button variant="outline" size="sm" asChild>
-            <Link href={ROUTES.documents} className="gap-2">
+            <AppLink href={ROUTES.documents} className="gap-2">
               <ArrowLeft size={16} /> Back
-            </Link>
+            </AppLink>
           </Button>
         }
       >

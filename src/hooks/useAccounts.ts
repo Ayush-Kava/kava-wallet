@@ -8,15 +8,21 @@ import type { Account, CreateAccountData } from '@/types/account-types';
 
 const EMPTY_ACCOUNTS: Account[] = [];
 
-export const useAccounts = () => {
+type UseAccountsOptions = {
+  /** When false, skips the list query (mutations still work). Default: true */
+  enabled?: boolean;
+};
+
+export const useAccounts = (options?: UseAccountsOptions) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const listEnabled = (options?.enabled ?? true) && !!user;
 
   const { data: accounts, isLoading } = useQuery<Account[]>({
     queryKey: ['accounts', user?.id],
     queryFn: () => accountsApi.getAccounts(),
-    enabled: !!user,
+    enabled: listEnabled,
   });
 
   const createAccountMutation = useMutation({

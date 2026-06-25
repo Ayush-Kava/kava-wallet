@@ -46,7 +46,7 @@ function CreateCategoryForm({
   onCategoryCreated: (categoryId: string) => void;
   onClose: () => void;
 }) {
-  const { createCategory } = useCategories();
+  const { createCategory } = useCategories({ enabled: false });
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categoryFormSchema),
     defaultValues: {

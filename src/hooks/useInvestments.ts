@@ -6,15 +6,21 @@ import type { CreateInvestmentData, UpdateInvestmentData } from '@/types/investm
 
 const INVESTMENTS_QUERY_KEY = ['investments'];
 
-export const useInvestments = () => {
+type UseInvestmentsOptions = {
+  /** When false, skips list/total queries (mutations still work). Default: true */
+  enabled?: boolean;
+};
+
+export const useInvestments = (options?: UseInvestmentsOptions) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const listEnabled = (options?.enabled ?? true) && !!user;
 
   const getInvestments = useQuery({
     queryKey: INVESTMENTS_QUERY_KEY,
     queryFn: () => investmentsApi.getInvestments(),
-    enabled: !!user,
+    enabled: listEnabled,
   });
 
   const useInvestment = (investmentId: string) =>
@@ -72,13 +78,13 @@ export const useInvestments = () => {
   const getTotalInvested = useQuery({
     queryKey: [...INVESTMENTS_QUERY_KEY, 'total-invested'],
     queryFn: () => investmentsApi.getTotalInvested(),
-    enabled: !!user,
+    enabled: listEnabled,
   });
 
   const getTotalCurrentValue = useQuery({
     queryKey: [...INVESTMENTS_QUERY_KEY, 'total-value'],
     queryFn: () => investmentsApi.getTotalCurrentValue(),
-    enabled: !!user,
+    enabled: listEnabled,
   });
 
   return {
