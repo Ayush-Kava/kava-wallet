@@ -1,106 +1,144 @@
 import { prisma } from '@/lib/prisma';
 import { asNullablePublicId, asPublicId } from '@/lib/public-id';
-import { maskAccountNumber, maskCardNumber } from '@/lib/mask-sensitive';
-import { resolveBankId } from '@/lib/utils/resolve-owned-resource';
-import type { Account, AccountType, CreateAccountData } from '@/types/account-types';
+import { isMaskedSensitiveValue, maskAccountNumber, maskCardNumber } from '@/lib/mask-sensitive';
+import { resolveActiveBankId } from '@/lib/utils/resolve-owned-resource';
+import type { CreateAccountInput } from '@/lib/validation/account';
+import { updateAccountSchemaByKind } from '@/lib/validation/account';
+import { parseBody, stripImmutableAccountFields } from '@/lib/validation/common';
+import type { Account, AccountType } from '@/types/account-types';
 import type { Transaction } from '@/types/transaction-types';
 import { toTransactionType, transactionInclude } from '@/types/transaction-types';
-import type { AccountKind } from '@prisma/client';
+import type { AccountKind, BankAccount, CashAccount, CreditCard, WalletAccount } from '@prisma/client';
+
+const ACTIVE_ACCOUNT = { deletedAt: null } as const;
 
 const kindToType = (kind: AccountKind): AccountType => kind as AccountType;
 
 const dateStr = (d: Date | null | undefined) => d?.toISOString().split('T')[0] ?? null;
 
-async function loadAccountDetails(
-  kind: AccountKind,
-  referenceId: number,
-  maskSensitive = false,
-): Promise<Omit<Account, 'id' | 'type'> | null> {
-  switch (kind) {
-    case 'bank': {
-      const row = await prisma.bankAccount.findUnique({
-        where: { id: referenceId },
-        include: { bank: true },
-      });
-      if (!row) return null;
-      const accountNumber = row.accountNumber.toString();
-      return {
-        name: row.name,
-        balance: Number(row.balance),
-        currency: row.currency,
-        color: row.color,
-        icon: row.icon,
-        bank_id: asNullablePublicId(row.bank.publicId),
-        bank_name: row.bank.name,
-        account_number: maskSensitive ? maskAccountNumber(accountNumber) : accountNumber,
-        ifsc_code: row.ifscCode,
-        created_at: row.createdAt.toISOString(),
-        updated_at: row.updatedAt.toISOString(),
-      };
-    }
-    case 'cash': {
-      const row = await prisma.cashAccount.findUnique({ where: { id: referenceId } });
-      if (!row) return null;
-      return {
-        name: row.name,
-        balance: Number(row.balance),
-        currency: row.currency,
-        color: row.color,
-        icon: row.icon,
-        created_at: row.createdAt.toISOString(),
-        updated_at: row.updatedAt.toISOString(),
-      };
-    }
-    case 'wallet': {
-      const row = await prisma.walletAccount.findUnique({ where: { id: referenceId } });
-      if (!row) return null;
-      return {
-        name: row.name,
-        balance: Number(row.balance),
-        currency: row.currency,
-        color: row.color,
-        icon: row.icon,
-        provider: row.provider,
-        created_at: row.createdAt.toISOString(),
-        updated_at: row.updatedAt.toISOString(),
-      };
-    }
-    case 'credit_card': {
-      const row = await prisma.creditCard.findUnique({
-        where: { id: referenceId },
-        include: { bank: true },
-      });
-      if (!row) return null;
-      return {
-        name: row.name,
-        balance: Number(row.outstandingBalance),
-        currency: row.currency,
-        color: row.color,
-        icon: row.icon,
-        bank_id: asNullablePublicId(row.bank?.publicId),
-        bank_name: row.bank?.name ?? null,
-        card_number: maskSensitive ? maskCardNumber(row.cardNumber) : row.cardNumber,
-        card_holder_name: row.cardHolderName,
-        expiry_date: dateStr(row.expiryDate),
-        statement_start_date: dateStr(row.statementStartDate),
-        statement_end_date: dateStr(row.statementEndDate),
-        due_date: dateStr(row.dueDate),
-        credit_limit: Number(row.creditLimit),
-        min_due: row.minDue ? Number(row.minDue) : null,
-        created_at: row.createdAt.toISOString(),
-        updated_at: row.updatedAt.toISOString(),
-      };
-    }
-    default:
-      return null;
+type RegistryRow = {
+  publicId: string;
+  kind: AccountKind;
+  referenceId: number;
+};
+
+type AccountDetails = Omit<Account, 'id' | 'type'>;
+
+const mapBankRow = (
+  row: BankAccount & { bank: { publicId: string; name: string } },
+  maskSensitive: boolean,
+): AccountDetails => {
+  const accountNumber = row.accountNumber.toString();
+  return {
+    name: row.name,
+    balance: Number(row.balance),
+    currency: row.currency,
+    color: row.color,
+    icon: row.icon,
+    bank_id: asNullablePublicId(row.bank.publicId),
+    bank_name: row.bank.name,
+    account_number: maskSensitive ? maskAccountNumber(accountNumber) : accountNumber,
+    ifsc_code: row.ifscCode,
+    created_at: row.createdAt.toISOString(),
+    updated_at: row.updatedAt.toISOString(),
+  };
+};
+
+const mapCashRow = (row: CashAccount, _maskSensitive: boolean): AccountDetails => ({
+  name: row.name,
+  balance: Number(row.balance),
+  currency: row.currency,
+  color: row.color,
+  icon: row.icon,
+  created_at: row.createdAt.toISOString(),
+  updated_at: row.updatedAt.toISOString(),
+});
+
+const mapWalletRow = (row: WalletAccount, _maskSensitive: boolean): AccountDetails => ({
+  name: row.name,
+  balance: Number(row.balance),
+  currency: row.currency,
+  color: row.color,
+  icon: row.icon,
+  provider: row.provider,
+  created_at: row.createdAt.toISOString(),
+  updated_at: row.updatedAt.toISOString(),
+});
+
+const mapCreditCardRow = (
+  row: CreditCard & { bank: { publicId: string; name: string } | null },
+  maskSensitive: boolean,
+): AccountDetails => ({
+  name: row.name,
+  balance: Number(row.outstandingBalance),
+  currency: row.currency,
+  color: row.color,
+  icon: row.icon,
+  bank_id: row.bank ? asNullablePublicId(row.bank.publicId) : null,
+  bank_name: row.bank?.name ?? null,
+  card_number: maskSensitive ? maskCardNumber(row.cardNumber) : row.cardNumber,
+  card_holder_name: row.cardHolderName,
+  expiry_date: dateStr(row.expiryDate),
+  statement_start_date: dateStr(row.statementStartDate),
+  statement_end_date: dateStr(row.statementEndDate),
+  due_date: dateStr(row.dueDate),
+  credit_limit: Number(row.creditLimit),
+  min_due: row.minDue ? Number(row.minDue) : null,
+  created_at: row.createdAt.toISOString(),
+  updated_at: row.updatedAt.toISOString(),
+});
+
+async function batchLoadDetails(
+  registries: RegistryRow[],
+  maskSensitive: boolean,
+): Promise<Map<number, AccountDetails>> {
+  const result = new Map<number, AccountDetails>();
+  if (!registries.length) return result;
+
+  const idsByKind = {
+    bank: [] as number[],
+    cash: [] as number[],
+    wallet: [] as number[],
+    credit_card: [] as number[],
+  };
+
+  for (const reg of registries) {
+    idsByKind[reg.kind].push(reg.referenceId);
   }
+
+  const [bankRows, cashRows, walletRows, cardRows] = await Promise.all([
+    idsByKind.bank.length
+      ? prisma.bankAccount.findMany({
+          where: { id: { in: idsByKind.bank } },
+          include: { bank: true },
+        })
+      : Promise.resolve([]),
+    idsByKind.cash.length
+      ? prisma.cashAccount.findMany({ where: { id: { in: idsByKind.cash } } })
+      : Promise.resolve([]),
+    idsByKind.wallet.length
+      ? prisma.walletAccount.findMany({ where: { id: { in: idsByKind.wallet } } })
+      : Promise.resolve([]),
+    idsByKind.credit_card.length
+      ? prisma.creditCard.findMany({
+          where: { id: { in: idsByKind.credit_card } },
+          include: { bank: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  for (const row of bankRows) result.set(row.id, mapBankRow(row, maskSensitive));
+  for (const row of cashRows) result.set(row.id, mapCashRow(row, maskSensitive));
+  for (const row of walletRows) result.set(row.id, mapWalletRow(row, maskSensitive));
+  for (const row of cardRows) result.set(row.id, mapCreditCardRow(row, maskSensitive));
+
+  return result;
 }
 
-async function toAccount(
-  registry: { publicId: string; kind: AccountKind; referenceId: number },
-  maskSensitive = false,
-): Promise<Account | null> {
-  const details = await loadAccountDetails(registry.kind, registry.referenceId, maskSensitive);
+function registryToAccount(
+  registry: RegistryRow,
+  details: AccountDetails | undefined,
+): Account | null {
   if (!details) return null;
   return {
     id: asPublicId(registry.publicId),
@@ -111,23 +149,37 @@ async function toAccount(
 
 export const listByUser = async (userId: number): Promise<Account[]> => {
   const registries = await prisma.account.findMany({
-    where: { userId },
+    where: { userId, ...ACTIVE_ACCOUNT },
     orderBy: { id: 'desc' },
+    select: { publicId: true, kind: true, referenceId: true },
   });
-  const accounts = await Promise.all(registries.map(r => toAccount(r, true)));
-  return accounts.filter((a): a is Account => a !== null);
+
+  const detailsMap = await batchLoadDetails(registries, true);
+  return registries
+    .map(reg => registryToAccount(reg, detailsMap.get(reg.referenceId)))
+    .filter((a): a is Account => a !== null);
 };
 
-export const getById = async (userId: number, publicId: string): Promise<Account | null> => {
-  const registry = await prisma.account.findFirst({ where: { publicId, userId } });
-  return registry ? toAccount(registry) : null;
+export const getById = async (
+  userId: number,
+  publicId: string,
+  options?: { revealSensitive?: boolean },
+): Promise<Account | null> => {
+  const registry = await prisma.account.findFirst({
+    where: { publicId, userId, ...ACTIVE_ACCOUNT },
+    select: { publicId: true, kind: true, referenceId: true },
+  });
+  if (!registry) return null;
+
+  const detailsMap = await batchLoadDetails([registry], !options?.revealSensitive);
+  return registryToAccount(registry, detailsMap.get(registry.referenceId));
 };
 
-export const create = async (userId: number, data: CreateAccountData): Promise<void> => {
+export const create = async (userId: number, data: CreateAccountInput): Promise<void> => {
   await prisma.$transaction(async tx => {
     switch (data.type) {
       case 'bank': {
-        const bankId = await resolveBankId(data.bank_id);
+        const bankId = await resolveActiveBankId(data.bank_id);
         if (!bankId) throw new Error('Invalid bank');
         const bankAccount = await tx.bankAccount.create({
           data: {
@@ -135,7 +187,7 @@ export const create = async (userId: number, data: CreateAccountData): Promise<v
             bankId,
             name: data.name,
             accountNumber: BigInt(data.account_number),
-            ifscCode: data.ifsc_code.toUpperCase(),
+            ifscCode: data.ifsc_code,
             balance: data.balance ?? 0,
             currency: data.currency ?? 'INR',
             color: data.color ?? '#10B981',
@@ -181,7 +233,8 @@ export const create = async (userId: number, data: CreateAccountData): Promise<v
         break;
       }
       case 'credit_card': {
-        const bankId = data.bank_id ? await resolveBankId(data.bank_id) : null;
+        const bankId = data.bank_id ? await resolveActiveBankId(data.bank_id) : null;
+        if (data.bank_id && !bankId) throw new Error('Invalid bank');
         const creditCard = await tx.creditCard.create({
           data: {
             userId,
@@ -210,46 +263,95 @@ export const create = async (userId: number, data: CreateAccountData): Promise<v
   });
 };
 
+type UpdateAccountInput = Partial<{
+  name: string;
+  currency: string;
+  color: string;
+  icon: string;
+  bank_id: string | null;
+  account_number: string;
+  ifsc_code: string;
+  provider: string;
+  card_number: string;
+  card_holder_name: string | null;
+  expiry_date: string;
+  statement_start_date: string;
+  statement_end_date: string;
+  due_date: string;
+  credit_limit: number;
+  min_due: number | null;
+}>;
+
 export const update = async (
   userId: number,
   publicId: string,
-  data: Partial<CreateAccountData>,
-): Promise<void> => {
-  const registry = await prisma.account.findFirst({ where: { publicId, userId } });
-  if (!registry) return;
+  data: UpdateAccountInput,
+): Promise<boolean> => {
+  const registry = await prisma.account.findFirst({
+    where: { publicId, userId, ...ACTIVE_ACCOUNT },
+  });
+  if (!registry) return false;
 
+  await applyAccountUpdate(userId, registry, data);
+  return true;
+};
+
+/** Validates request body by account kind and applies the update. */
+export const updateFromRequestBody = async (
+  userId: number,
+  publicId: string,
+  rawBody: unknown,
+): Promise<boolean> => {
+  const registry = await prisma.account.findFirst({
+    where: { publicId, userId, ...ACTIVE_ACCOUNT },
+    select: { id: true, kind: true, referenceId: true },
+  });
+  if (!registry) return false;
+
+  const body = stripImmutableAccountFields(rawBody);
+  const data = parseBody(updateAccountSchemaByKind[registry.kind], body);
+  await applyAccountUpdate(userId, registry, data);
+  return true;
+};
+
+const applyAccountUpdate = async (
+  userId: number,
+  registry: { kind: AccountKind; referenceId: number },
+  data: UpdateAccountInput,
+): Promise<void> => {
   const refId = registry.referenceId;
 
   switch (registry.kind) {
-    case 'bank':
-      if (data.type && data.type !== 'bank') return;
+    case 'bank': {
+      let bankId: number | undefined;
+      if (data.bank_id) {
+        bankId = (await resolveActiveBankId(data.bank_id)) ?? undefined;
+        if (!bankId) throw new Error('Invalid bank');
+      }
+      const accountNumber =
+        data.account_number && !isMaskedSensitiveValue(data.account_number)
+          ? BigInt(data.account_number)
+          : undefined;
+
       await prisma.bankAccount.updateMany({
         where: { id: refId, userId },
         data: {
           name: data.name,
-          bankId:
-            data.type === 'bank' && data.bank_id
-              ? ((await resolveBankId(data.bank_id)) ?? undefined)
-              : undefined,
-          accountNumber:
-            data.type === 'bank' && data.account_number
-              ? BigInt(data.account_number)
-              : undefined,
-          ifscCode:
-            data.type === 'bank' && data.ifsc_code ? data.ifsc_code.toUpperCase() : undefined,
-          balance: data.balance,
+          bankId,
+          accountNumber,
+          ifscCode: data.ifsc_code,
           currency: data.currency,
           color: data.color,
           icon: data.icon,
         },
       });
       break;
+    }
     case 'cash':
       await prisma.cashAccount.updateMany({
         where: { id: refId, userId },
         data: {
           name: data.name,
-          balance: data.balance,
           currency: data.currency,
           color: data.color,
           icon: data.icon,
@@ -261,72 +363,72 @@ export const update = async (
         where: { id: refId, userId },
         data: {
           name: data.name,
-          provider: data.type === 'wallet' ? data.provider : undefined,
-          balance: data.balance,
+          provider: data.provider,
           currency: data.currency,
           color: data.color,
           icon: data.icon,
         },
       });
       break;
-    case 'credit_card':
-      if (data.type && data.type !== 'credit_card') return;
+    case 'credit_card': {
+      let bankId: number | null | undefined;
+      if (data.bank_id !== undefined) {
+        if (data.bank_id) {
+          bankId = (await resolveActiveBankId(data.bank_id)) ?? null;
+          if (!bankId) throw new Error('Invalid bank');
+        } else {
+          bankId = null;
+        }
+      }
+      const cardNumber =
+        data.card_number && !isMaskedSensitiveValue(data.card_number)
+          ? data.card_number
+          : undefined;
+
       await prisma.creditCard.updateMany({
         where: { id: refId, userId },
         data: {
           name: data.name,
-          bankId:
-            data.type === 'credit_card' && data.bank_id
-              ? ((await resolveBankId(data.bank_id)) ?? undefined)
-              : undefined,
-          cardNumber: data.type === 'credit_card' ? data.card_number : undefined,
-          cardHolderName: data.type === 'credit_card' ? data.card_holder_name : undefined,
-          expiryDate:
-            data.type === 'credit_card' && data.expiry_date
-              ? new Date(data.expiry_date)
-              : undefined,
-          creditLimit: data.type === 'credit_card' ? data.credit_limit : undefined,
-          outstandingBalance: data.balance,
-          minDue: data.type === 'credit_card' ? data.min_due : undefined,
-          statementStartDate:
-            data.type === 'credit_card' && data.statement_start_date
-              ? new Date(data.statement_start_date)
-              : undefined,
-          statementEndDate:
-            data.type === 'credit_card' && data.statement_end_date
-              ? new Date(data.statement_end_date)
-              : undefined,
-          dueDate:
-            data.type === 'credit_card' && data.due_date ? new Date(data.due_date) : undefined,
+          bankId,
+          cardNumber,
+          cardHolderName: data.card_holder_name,
+          expiryDate: data.expiry_date ? new Date(data.expiry_date) : undefined,
+          creditLimit: data.credit_limit,
+          minDue: data.min_due,
+          statementStartDate: data.statement_start_date
+            ? new Date(data.statement_start_date)
+            : undefined,
+          statementEndDate: data.statement_end_date
+            ? new Date(data.statement_end_date)
+            : undefined,
+          dueDate: data.due_date ? new Date(data.due_date) : undefined,
           currency: data.currency,
           color: data.color,
           icon: data.icon,
         },
       });
       break;
+    }
   }
 };
 
 export const remove = async (userId: number, publicId: string): Promise<void> => {
-  const registry = await prisma.account.findFirst({ where: { publicId, userId } });
+  const registry = await prisma.account.findFirst({
+    where: { publicId, userId, ...ACTIVE_ACCOUNT },
+    select: { id: true },
+  });
   if (!registry) return;
 
-  await prisma.$transaction(async tx => {
-    await tx.account.delete({ where: { id: registry.id } });
-    switch (registry.kind) {
-      case 'bank':
-        await tx.bankAccount.deleteMany({ where: { id: registry.referenceId, userId } });
-        break;
-      case 'cash':
-        await tx.cashAccount.deleteMany({ where: { id: registry.referenceId, userId } });
-        break;
-      case 'wallet':
-        await tx.walletAccount.deleteMany({ where: { id: registry.referenceId, userId } });
-        break;
-      case 'credit_card':
-        await tx.creditCard.deleteMany({ where: { id: registry.referenceId, userId } });
-        break;
-    }
+  const txCount = await prisma.transaction.count({
+    where: { accountId: registry.id, userId },
+  });
+  if (txCount > 0) {
+    throw new Error('Account has transactions and cannot be deleted');
+  }
+
+  await prisma.account.update({
+    where: { id: registry.id },
+    data: { deletedAt: new Date() },
   });
 };
 
@@ -335,7 +437,7 @@ export const listTransactions = async (
   accountPublicId: string,
 ): Promise<Transaction[]> => {
   const account = await prisma.account.findFirst({
-    where: { publicId: accountPublicId, userId },
+    where: { publicId: accountPublicId, userId, ...ACTIVE_ACCOUNT },
     select: { id: true },
   });
   if (!account) return [];
@@ -349,9 +451,7 @@ export const listTransactions = async (
     userId,
     transactions.map(tx => tx.account.publicId),
   );
-  return transactions.map(tx =>
-    toTransactionType(tx, labels.get(tx.account.publicId)),
-  );
+  return transactions.map(tx => toTransactionType(tx, labels.get(tx.account.publicId)));
 };
 
 export const getAccountSummaryByPublicIds = async (
@@ -363,17 +463,17 @@ export const getAccountSummaryByPublicIds = async (
   if (!unique.length) return map;
 
   const registries = await prisma.account.findMany({
-    where: { userId, publicId: { in: unique } },
+    where: { userId, publicId: { in: unique }, ...ACTIVE_ACCOUNT },
+    select: { publicId: true, kind: true, referenceId: true },
   });
 
-  await Promise.all(
-    registries.map(async reg => {
-      const details = await loadAccountDetails(reg.kind, reg.referenceId);
-      if (details) {
-        map.set(reg.publicId, { name: details.name, type: reg.kind, balance: details.balance });
-      }
-    }),
-  );
+  const detailsMap = await batchLoadDetails(registries, true);
+  for (const reg of registries) {
+    const details = detailsMap.get(reg.referenceId);
+    if (details) {
+      map.set(reg.publicId, { name: details.name, type: reg.kind, balance: details.balance });
+    }
+  }
 
   return map;
 };

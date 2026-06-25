@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
 import { authAdmin } from '@/lib/auth';
 import { parsePublicId } from '@/lib/public-id';
+import { bankFormSchema } from '@/lib/validation/bank';
+import { parseBody } from '@/lib/validation/common';
 import {
   successResponse,
   errorResponse,
@@ -23,13 +25,9 @@ export async function POST(req: NextRequest) {
   try {
     await authAdmin();
     const body = await req.json().catch(() => ({}));
-    const { name, ifsc_prefix } = body;
+    const data = parseBody(bankFormSchema, body);
 
-    if (!name || typeof name !== 'string') {
-      return errorResponse(ERRORS.GENERIC_BAD_REQUEST);
-    }
-
-    const bank = await create(name.trim(), ifsc_prefix?.trim());
+    const bank = await create(data.name, data.ifsc_prefix || undefined);
     return successResponse(bank, 201);
   } catch (error) {
     return handleRouteError(error);
@@ -40,17 +38,24 @@ export async function PUT(req: NextRequest) {
   try {
     await authAdmin();
     const body = await req.json().catch(() => ({}));
-    const { publicId: rawPublicId, name, ifsc_prefix, is_active } = body;
-    const publicId = parsePublicId(rawPublicId);
+    const { publicId: rawPublicId, ...rest } = body as {
+      publicId?: string;
+      name?: string;
+      ifsc_prefix?: string;
+      is_active?: boolean;
+    };
+    const publicId = parsePublicId(rawPublicId ?? '');
 
     if (!publicId) {
       return errorResponse(ERRORS.GENERIC_BAD_REQUEST);
     }
 
+    const data = parseBody(bankFormSchema.partial(), rest);
+
     const bank = await update(publicId, {
-      name: typeof name === 'string' ? name.trim() : undefined,
-      ifsc_prefix: typeof ifsc_prefix === 'string' ? ifsc_prefix.trim() : undefined,
-      is_active: typeof is_active === 'boolean' ? is_active : undefined,
+      name: data.name,
+      ifsc_prefix: data.ifsc_prefix || undefined,
+      is_active: data.is_active,
     });
 
     return successResponse(bank);
@@ -70,8 +75,9 @@ export async function DELETE(req: NextRequest) {
     }
 
     await remove(publicId);
-    return successResponse({});
+    return successResponse({ deactivated: true });
   } catch (error) {
     return handleRouteError(error);
   }
 }
+

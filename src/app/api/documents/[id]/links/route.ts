@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
 import { authUser } from '@/lib/auth';
 import { parsePublicId } from '@/lib/public-id';
+import { createDocumentLinkSchema } from '@/lib/validation/document';
+import { parseBody } from '@/lib/validation/common';
 import {
   successResponse,
   errorResponse,
@@ -18,17 +20,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const user = await authUser();
     const body = await req.json().catch(() => ({}));
-    const { linked_entity_type, linked_entity_id } = body;
-    const linkedEntityPublicId = parsePublicId(linked_entity_id ?? '');
-
-    if (!linked_entity_type || !linkedEntityPublicId) {
-      return errorResponse(ERRORS.GENERIC_BAD_REQUEST);
-    }
+    const data = parseBody(createDocumentLinkSchema, body);
 
     const link = await addLink(user.id, {
       document_id: publicId,
-      linked_entity_type,
-      linked_entity_id: linkedEntityPublicId,
+      linked_entity_type: data.linked_entity_type,
+      linked_entity_id: data.linked_entity_id,
     });
     if (!link) return notFoundResponse();
 

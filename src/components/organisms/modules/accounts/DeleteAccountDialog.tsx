@@ -24,8 +24,8 @@ export function DeleteAccountDialog({ open, onOpenChange, onConfirm }: DeleteAcc
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Account?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete this account and all associated transactions. This action
-            cannot be undone.
+            This will remove this account from your list. Accounts with existing transactions
+            cannot be deleted.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

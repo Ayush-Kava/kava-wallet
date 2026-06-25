@@ -188,6 +188,7 @@ export const updateTransaction = async (
         select: { id: true },
       });
       categoryId = category?.id ?? null;
+      if (data.category_id && !categoryId) throw new Error('Invalid category');
     } else {
       categoryId = null;
     }

@@ -220,10 +220,10 @@ export default function BanksAdminPage() {
       <AlertDialog open={Boolean(deletingBank)} onOpenChange={() => setDeletingBank(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete bank?</AlertDialogTitle>
+            <AlertDialogTitle>Deactivate bank?</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete <strong>{deletingBank?.name}</strong>? This only works if no accounts are
-              linked to this bank.
+              Deactivate <strong>{deletingBank?.name}</strong>? It will be hidden from new account
+              setup. Existing accounts linked to this bank are not affected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -232,7 +232,7 @@ export default function BanksAdminPage() {
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteBank.isPending ? <Loader2 className="animate-spin" /> : 'Delete'}
+              {deleteBank.isPending ? <Loader2 className="animate-spin" /> : 'Deactivate'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

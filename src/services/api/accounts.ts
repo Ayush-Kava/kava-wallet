@@ -6,6 +6,11 @@ export const accountsApi = {
     return apiFetch<Account[]>('/api/accounts');
   },
 
+  getAccount: async (id: string, reveal = false): Promise<Account | null> => {
+    const query = reveal ? '?reveal=true' : '';
+    return apiFetch<Account | null>(`/api/accounts/${id}${query}`);
+  },
+
   createAccount: async (data: CreateAccountData): Promise<void> => {
     await apiFetch<void>('/api/accounts', 'POST', data);
   },

@@ -37,6 +37,29 @@ export const update = async (
   return toBankType(bank);
 };
 
+/** Soft-delete: deactivate bank so it cannot be assigned to new accounts. */
 export const remove = async (publicId: string): Promise<void> => {
-  await prisma.bank.delete({ where: { publicId } });
+  const bank = await prisma.bank.findUnique({
+    where: { publicId },
+    select: { id: true },
+  });
+  if (!bank) return;
+
+  const [bankAccounts, creditCards] = await Promise.all([
+    prisma.bankAccount.count({ where: { bankId: bank.id } }),
+    prisma.creditCard.count({ where: { bankId: bank.id } }),
+  ]);
+
+  if (bankAccounts > 0 || creditCards > 0) {
+    await prisma.bank.update({
+      where: { publicId },
+      data: { isActive: false },
+    });
+    return;
+  }
+
+  await prisma.bank.update({
+    where: { publicId },
+    data: { isActive: false },
+  });
 };

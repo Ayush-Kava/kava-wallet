@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma';
+import { assertAccountOwnership } from '@/services/repositories/accounts/ownership';
+import { resolveOwnedId } from '@/lib/utils/resolve-owned-resource';
 import { asPublicId } from '@/lib/public-id';
 import { getAccountSummaryByPublicIds } from '@/services/repositories/accounts';
 import type {
@@ -164,15 +166,14 @@ export const addFunding = async (
   if (!goal) return null;
 
   if (data.source_type === 'account') {
-    const account = await prisma.account.findFirst({
-      where: { publicId: data.source_id, userId },
-    });
-    if (!account) return null;
+    try {
+      await assertAccountOwnership(userId, data.source_id);
+    } catch {
+      return null;
+    }
   } else {
-    const investment = await prisma.investment.findFirst({
-      where: { publicId: data.source_id, userId },
-    });
-    if (!investment) return null;
+    const investmentId = await resolveOwnedId('investment', userId, data.source_id);
+    if (!investmentId) return null;
   }
 
   const created = await prisma.goalFunding.upsert({
@@ -212,16 +213,15 @@ export const updateFunding = async (
 
   if (data.source_id !== undefined) {
     if (data.source_type === 'account' || !data.source_type) {
-      const account = await prisma.account.findFirst({
-        where: { publicId: data.source_id, userId },
-      });
-      if (!account && data.source_type === 'account') return false;
+      try {
+        await assertAccountOwnership(userId, data.source_id);
+      } catch {
+        if (data.source_type === 'account') return false;
+      }
     }
     if (data.source_type === 'investment') {
-      const investment = await prisma.investment.findFirst({
-        where: { publicId: data.source_id, userId },
-      });
-      if (!investment) return false;
+      const investmentId = await resolveOwnedId('investment', userId, data.source_id);
+      if (!investmentId) return false;
     }
     updateData.source_public_id = data.source_id;
   }

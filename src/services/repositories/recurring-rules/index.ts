@@ -185,7 +185,26 @@ const executeRule = async (userId: number, rule: PrismaRecurringRule): Promise<v
 
   await prisma.$transaction(async tx => {
     if (rule.type === 'transfer') {
-      if (!rule.fromAccountId || !rule.toAccountId) return;
+      if (!rule.fromAccountId || !rule.toAccountId) {
+        await tx.recurringRule.update({
+          where: { id: rule.id },
+          data: { paused: true },
+        });
+        return;
+      }
+      const fromActive = await tx.account.findFirst({
+        where: { id: rule.fromAccountId, userId, deletedAt: null },
+      });
+      const toActive = await tx.account.findFirst({
+        where: { id: rule.toAccountId, userId, deletedAt: null },
+      });
+      if (!fromActive || !toActive) {
+        await tx.recurringRule.update({
+          where: { id: rule.id },
+          data: { paused: true },
+        });
+        return;
+      }
       const expense = await tx.transaction.create({
         data: {
           userId,
@@ -214,6 +233,16 @@ const executeRule = async (userId: number, rule: PrismaRecurringRule): Promise<v
       });
       await applyTransferDeltas(tx, rule.fromAccountId, rule.toAccountId, amount);
     } else if (rule.accountId) {
+      const activeAccount = await tx.account.findFirst({
+        where: { id: rule.accountId, userId, deletedAt: null },
+      });
+      if (!activeAccount) {
+        await tx.recurringRule.update({
+          where: { id: rule.id },
+          data: { paused: true },
+        });
+        return;
+      }
       const txType = rule.type === 'income' ? 'income' : 'expense';
       await tx.transaction.create({
         data: {

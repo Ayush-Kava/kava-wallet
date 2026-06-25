@@ -12,61 +12,96 @@ export const toDecimal = (value: MoneyInput): Decimal => {
   return new Decimal(new DecimalJs(value).toFixed(2));
 };
 
-const getRegistryBalance = async (
-  tx: TxClient,
-  kind: AccountKind,
-  referenceId: number,
-): Promise<Decimal> => {
-  switch (kind) {
-    case 'bank': {
-      const row = await tx.bankAccount.findUnique({
-        where: { id: referenceId },
-        select: { balance: true },
-      });
-      if (!row) throw new Error('Account not found');
-      return row.balance;
-    }
-    case 'cash': {
-      const row = await tx.cashAccount.findUnique({
-        where: { id: referenceId },
-        select: { balance: true },
-      });
-      if (!row) throw new Error('Account not found');
-      return row.balance;
-    }
-    case 'wallet': {
-      const row = await tx.walletAccount.findUnique({
-        where: { id: referenceId },
-        select: { balance: true },
-      });
-      if (!row) throw new Error('Account not found');
-      return row.balance;
-    }
-    case 'credit_card': {
-      const row = await tx.creditCard.findUnique({
-        where: { id: referenceId },
-        select: { outstandingBalance: true },
-      });
-      if (!row) throw new Error('Account not found');
-      return row.outstandingBalance;
-    }
-  }
+const throwInsufficient = (current: Decimal, delta: Decimal): never => {
+  const available = new DecimalJs(current.toString()).toNumber();
+  const required = new DecimalJs(delta.toString()).abs().toNumber();
+  throw new InsufficientBalanceError(available, required);
 };
 
-const assertSufficientBalance = async (
+const incrementBalanceField = async (
   tx: TxClient,
   kind: AccountKind,
   referenceId: number,
   delta: Decimal,
 ): Promise<void> => {
-  if (!NON_NEGATIVE_ACCOUNT_KINDS.has(kind)) return;
+  const isDebit = new DecimalJs(delta.toString()).isNegative();
 
-  const current = await getRegistryBalance(tx, kind, referenceId);
-  const newBalance = new DecimalJs(current.toString()).plus(delta.toString());
-  if (newBalance.lessThan(0)) {
-    const available = new DecimalJs(current.toString()).toNumber();
-    const required = new DecimalJs(delta.toString()).abs().toNumber();
-    throw new InsufficientBalanceError(available, required);
+  switch (kind) {
+    case 'bank': {
+      if (isDebit) {
+        const abs = delta.abs();
+        const result = await tx.bankAccount.updateMany({
+          where: { id: referenceId, balance: { gte: abs } },
+          data: { balance: { increment: delta } },
+        });
+        if (result.count === 0) {
+          const row = await tx.bankAccount.findUnique({
+            where: { id: referenceId },
+            select: { balance: true },
+          });
+          if (!row) throw new Error('Account not found');
+          throwInsufficient(row.balance, delta);
+        }
+      } else {
+        await tx.bankAccount.update({
+          where: { id: referenceId },
+          data: { balance: { increment: delta } },
+        });
+      }
+      break;
+    }
+    case 'cash': {
+      if (isDebit) {
+        const abs = delta.abs();
+        const result = await tx.cashAccount.updateMany({
+          where: { id: referenceId, balance: { gte: abs } },
+          data: { balance: { increment: delta } },
+        });
+        if (result.count === 0) {
+          const row = await tx.cashAccount.findUnique({
+            where: { id: referenceId },
+            select: { balance: true },
+          });
+          if (!row) throw new Error('Account not found');
+          throwInsufficient(row.balance, delta);
+        }
+      } else {
+        await tx.cashAccount.update({
+          where: { id: referenceId },
+          data: { balance: { increment: delta } },
+        });
+      }
+      break;
+    }
+    case 'wallet': {
+      if (isDebit) {
+        const abs = delta.abs();
+        const result = await tx.walletAccount.updateMany({
+          where: { id: referenceId, balance: { gte: abs } },
+          data: { balance: { increment: delta } },
+        });
+        if (result.count === 0) {
+          const row = await tx.walletAccount.findUnique({
+            where: { id: referenceId },
+            select: { balance: true },
+          });
+          if (!row) throw new Error('Account not found');
+          throwInsufficient(row.balance, delta);
+        }
+      } else {
+        await tx.walletAccount.update({
+          where: { id: referenceId },
+          data: { balance: { increment: delta } },
+        });
+      }
+      break;
+    }
+    case 'credit_card':
+      await tx.creditCard.update({
+        where: { id: referenceId },
+        data: { outstandingBalance: { increment: delta } },
+      });
+      break;
   }
 };
 
@@ -75,37 +110,18 @@ const adjustRegistryBalance = async (
   accountId: number,
   delta: Decimal,
 ): Promise<void> => {
-  const registry = await tx.account.findUnique({ where: { id: accountId } });
+  const registry = await tx.account.findFirst({
+    where: { id: accountId, deletedAt: null },
+    select: { kind: true, referenceId: true },
+  });
   if (!registry) throw new Error('Account not found');
 
-  await assertSufficientBalance(tx, registry.kind, registry.referenceId, delta);
-
-  switch (registry.kind) {
-    case 'bank':
-      await tx.bankAccount.update({
-        where: { id: registry.referenceId },
-        data: { balance: { increment: delta } },
-      });
-      break;
-    case 'cash':
-      await tx.cashAccount.update({
-        where: { id: registry.referenceId },
-        data: { balance: { increment: delta } },
-      });
-      break;
-    case 'wallet':
-      await tx.walletAccount.update({
-        where: { id: registry.referenceId },
-        data: { balance: { increment: delta } },
-      });
-      break;
-    case 'credit_card':
-      await tx.creditCard.update({
-        where: { id: registry.referenceId },
-        data: { outstandingBalance: { increment: delta } },
-      });
-      break;
+  if (NON_NEGATIVE_ACCOUNT_KINDS.has(registry.kind) && new DecimalJs(delta.toString()).isNegative()) {
+    await incrementBalanceField(tx, registry.kind, registry.referenceId, delta);
+    return;
   }
+
+  await incrementBalanceField(tx, registry.kind, registry.referenceId, delta);
 };
 
 export const applyTransactionDelta = async (

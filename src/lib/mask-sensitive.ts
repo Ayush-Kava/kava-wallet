@@ -11,3 +11,9 @@ export const maskCardNumber = (value: string | null | undefined): string | null 
   if (digits.length <= 4) return digits;
   return `**** **** **** ${digits.slice(-4)}`;
 };
+
+/** Returns true when the value looks like a masked display string, not a real number. */
+export const isMaskedSensitiveValue = (value: string | null | undefined): boolean => {
+  if (!value) return false;
+  return value.includes('*');
+};

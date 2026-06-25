@@ -7,12 +7,16 @@ export class OwnershipError extends Error {
   }
 }
 
+const activeAccountFilter = {
+  deletedAt: null,
+} as const;
+
 export const resolveAccountInternalId = async (
   userId: number,
   accountPublicId: string,
 ): Promise<number | null> => {
   const account = await prisma.account.findFirst({
-    where: { publicId: accountPublicId, userId },
+    where: { publicId: accountPublicId, userId, ...activeAccountFilter },
     select: { id: true },
   });
   return account?.id ?? null;
@@ -35,7 +39,7 @@ export const assertAccountsOwnership = async (
   if (uniqueIds.length === 0) return [];
 
   const accounts = await prisma.account.findMany({
-    where: { userId, publicId: { in: uniqueIds } },
+    where: { userId, publicId: { in: uniqueIds }, ...activeAccountFilter },
     select: { id: true, publicId: true },
   });
 

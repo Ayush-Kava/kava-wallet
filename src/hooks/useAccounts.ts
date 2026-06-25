@@ -1,3 +1,5 @@
+'use client';
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/useToast';
@@ -78,6 +80,7 @@ export const useAccounts = () => {
     updateAccount: (data: Partial<CreateAccountData> & { id: string }) =>
       updateAccountMutation.mutateAsync(data),
     deleteAccount: (id: string) => deleteAccountMutation.mutateAsync(id),
+    fetchAccountForEdit: (id: string) => accountsApi.getAccount(id, true),
     isCreatingAccount: createAccountMutation.isPending,
     isUpdatingAccount: updateAccountMutation.isPending,
     isDeletingAccount: deleteAccountMutation.isPending,
@@ -85,3 +88,17 @@ export const useAccounts = () => {
 };
 
 export type { Account, CreateAccountData } from '@/types/account-types';
+
+/** Load full account details (unmasked) for the edit form. */
+export function useAccountForEdit(accountId: string | null, enabled: boolean) {
+  const { user } = useAuth();
+
+  return useQuery<Account | null>({
+    queryKey: ['account-edit', accountId, user?.id],
+    queryFn: async () => {
+      if (!accountId) return null;
+      return accountsApi.getAccount(accountId, true);
+    },
+    enabled: enabled && !!accountId && !!user,
+  });
+}

@@ -64,14 +64,10 @@ export const listByAccount = async (
   userId: number,
   accountPublicId: string,
 ): Promise<Investment[]> => {
-  const account = await prisma.account.findFirst({
-    where: { publicId: accountPublicId, userId },
-    select: { id: true },
-  });
-  if (!account) return [];
+  const accountId = await assertAccountOwnership(userId, accountPublicId);
 
   const investments = await prisma.investment.findMany({
-    where: { userId, accountId: account.id },
+    where: { userId, accountId },
     include: investmentInclude,
     orderBy: { createdAt: 'desc' },
   });

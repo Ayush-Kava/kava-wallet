@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { assertLinkedEntityOwnership } from '@/lib/utils/resolve-owned-resource';
 import type {
   Document,
   DocumentWithLinks,
@@ -98,6 +99,12 @@ export const addLink = async (
   });
   if (!document) return null;
 
+  await assertLinkedEntityOwnership(
+    userId,
+    data.linked_entity_type,
+    data.linked_entity_id,
+  );
+
   const created = await prisma.documentLink.create({
     data: {
       documentId: document.id,
@@ -185,6 +192,12 @@ export const listByLinkedEntity = async (
   entityType: string,
   entityPublicId: string,
 ): Promise<DocumentWithLinks[]> => {
+  await assertLinkedEntityOwnership(
+    userId,
+    entityType as import('@/types/document-types').LinkedEntityType,
+    entityPublicId,
+  );
+
   const links = await prisma.documentLink.findMany({
     where: {
       userId,

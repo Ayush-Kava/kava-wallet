@@ -203,6 +203,7 @@ model Account {
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   kind        AccountKind
   referenceId Int
+  deletedAt   DateTime?
 
   transactions  Transaction[]
   recurring     RecurringRule[] @relation("RecurringAccount")
@@ -214,6 +215,7 @@ model Account {
   @@unique([kind, referenceId])
   @@index([userId])
   @@index([userId, publicId])
+  @@index([userId, deletedAt])
 }
 
 model Category {

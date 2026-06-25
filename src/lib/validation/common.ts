@@ -8,6 +8,15 @@ export const amountSchema = z.union([z.number(), z.string()]).transform(val => {
   return Math.round(num * 100) / 100;
 });
 
+/** Balance / initial amount — zero or positive. */
+export const nonNegativeAmountSchema = z.union([z.number(), z.string()]).transform(val => {
+  const num = typeof val === 'string' ? parseFloat(val) : val;
+  if (!Number.isFinite(num) || num < 0) {
+    throw new Error('Amount must be zero or greater');
+  }
+  return Math.round(num * 100) / 100;
+});
+
 export const idSchema = z.coerce.number().int().positive();
 export const optionalIdSchema = z.coerce.number().int().positive().optional();
 
@@ -43,4 +52,11 @@ export const parseQuery = <T extends z.ZodTypeAny>(
     throw new Error(message || 'Invalid query parameters');
   }
   return result.data;
+};
+
+/** Strip fields that must never be updated via generic body parsing. */
+export const stripImmutableAccountFields = (body: unknown): unknown => {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return body;
+  const { balance, type, ...rest } = body as Record<string, unknown>;
+  return rest;
 };

@@ -56,7 +56,7 @@ export const useAdminBanks = () => {
     mutationFn: (id: string) => banksApi.deleteBank(id),
     onSuccess: () => {
       invalidateBanks();
-      toast({ title: 'Bank deleted' });
+      toast({ title: 'Bank deactivated' });
     },
     onError: (error: Error) => {
       toast({

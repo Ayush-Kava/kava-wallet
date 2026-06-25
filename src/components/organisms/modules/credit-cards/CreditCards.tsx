@@ -22,6 +22,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { DatePicker } from '@/components/molecules/common/DatePicker';
 import { useAccounts } from '@/hooks/useAccounts';
+import { AccountFormDialog } from '@/components/organisms/modules/accounts/AccountFormDialog';
+import type { CreateAccountData } from '@/types/account-types';
 import { formatCurrency } from '@/lib/ledger-utils';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { CreditCard, Plus, Loader2, Trash2, Edit2, ArrowRight } from 'lucide-react';
@@ -66,6 +68,7 @@ export default function CreditCards() {
   );
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [accountFormOpen, setAccountFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -144,17 +147,14 @@ export default function CreditCards() {
         type: 'credit_card',
         ...result.data,
       });
-    } else {
-      await createAccount({
-        type: 'credit_card',
-        card_number: '0000',
-        expiry_date: '12/99',
-        ...result.data,
-      });
+      setDialogOpen(false);
+      resetForm();
     }
+  };
 
-    setDialogOpen(false);
-    resetForm();
+  const handleCreateAccount = async (data: CreateAccountData) => {
+    await createAccount(data);
+    setAccountFormOpen(false);
   };
 
   const handleDelete = async () => {
@@ -186,7 +186,7 @@ export default function CreditCards() {
       title="Credit Cards"
       description="Track your cards, statement cycles, and dues."
       actions={
-        <Button onClick={() => setDialogOpen(true)} className="inline-flex items-center gap-2">
+        <Button onClick={() => setAccountFormOpen(true)} className="inline-flex items-center gap-2">
           <Plus size={18} /> Add Credit Card
         </Button>
       }
@@ -476,8 +476,8 @@ export default function CreditCards() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Credit Card?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this credit card account and all associated transactions.
-              This action cannot be undone.
+              This will remove this credit card from your list. Cards with existing transactions
+              cannot be deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -491,6 +491,13 @@ export default function CreditCards() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AccountFormDialog
+        open={accountFormOpen}
+        onOpenChange={setAccountFormOpen}
+        onSubmit={handleCreateAccount}
+        isSubmitting={isCreatingAccount}
+      />
     </DashboardLayout>
   );
 }
