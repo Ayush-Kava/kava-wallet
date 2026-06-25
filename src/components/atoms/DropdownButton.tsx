@@ -24,6 +24,7 @@ export interface DropdownButtonProps {
   align?: 'start' | 'center' | 'end';
   className?: string;
   showSeparator?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function DropdownButton({
@@ -32,9 +33,10 @@ export function DropdownButton({
   align = 'end',
   className = '',
   showSeparator = false,
+  onOpenChange,
 }: DropdownButtonProps) {
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>
         {typeof trigger === 'string' ? (
           <Button variant="ghost" className={className}>

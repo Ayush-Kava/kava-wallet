@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import { AppLink } from '@/components/atoms/AppLink';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/organisms/layout/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
@@ -62,7 +62,7 @@ export default function InvestmentDetail({ investmentId }: InvestmentDetailProps
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [linkDocOpen, setLinkDocOpen] = useState(false);
 
-  const { addDocumentLink, removeDocumentLink } = useDocuments();
+  const { addDocumentLink, removeDocumentLink } = useDocuments({ loadList: false });
 
   // Fetch linked documents
   const {
@@ -130,9 +130,9 @@ export default function InvestmentDetail({ investmentId }: InvestmentDetailProps
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link href="/app/investments" className="gap-2">
+            <AppLink href={ROUTES.investments} className="gap-2">
               <ArrowLeft size={16} /> Back
-            </Link>
+            </AppLink>
           </Button>
           <Button
             variant="outline"
@@ -264,12 +264,12 @@ export default function InvestmentDetail({ investmentId }: InvestmentDetailProps
                     className="flex items-start justify-between rounded-lg border border-border/50 bg-muted/50 p-3"
                   >
                     <div className="min-w-0 flex-1">
-                      <Link
+                      <AppLink
                         href={ROUTES.document(doc.id)}
                         className="truncate font-medium hover:underline"
                       >
                         {doc.name}
-                      </Link>
+                      </AppLink>
                       {doc.description && (
                         <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                           {doc.description}

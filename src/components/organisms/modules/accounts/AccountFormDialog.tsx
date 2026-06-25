@@ -129,13 +129,19 @@ type AccountFormDialogProps = {
   onSubmit: (data: CreateAccountData, accountId?: string) => Promise<void>;
   editingAccount?: Account | null;
   isSubmitting: boolean;
+  /** When set, new-account forms start on this type and hide the type picker. */
+  defaultType?: AccountType;
+  title?: string;
 };
 
-function getAccountFormValues(editingAccount?: Account | null): AccountFormValues {
+function getAccountFormValues(
+  editingAccount?: Account | null,
+  defaultType: AccountType = 'bank',
+): AccountFormValues {
   if (!editingAccount) {
     return {
       name: '',
-      type: 'bank',
+      type: defaultType,
       balance: '',
       color: colorOptions[0],
       bank_id: '',
@@ -291,17 +297,27 @@ interface AccountFormProps {
   onSubmit: (data: CreateAccountData, accountId?: string) => Promise<void>;
   onOpenChange: (open: boolean) => void;
   isSubmitting: boolean;
+  defaultType?: AccountType;
+  lockType?: boolean;
 }
 
-function AccountForm({ editingAccount, onSubmit, onOpenChange, isSubmitting }: AccountFormProps) {
+function AccountForm({
+  editingAccount,
+  onSubmit,
+  onOpenChange,
+  isSubmitting,
+  defaultType,
+  lockType = false,
+}: AccountFormProps) {
+  const resolvedType = defaultType ?? 'bank';
   const { banks, isLoading: banksLoading } = useBanks();
   const form = useForm<AccountFormValues>({
-    defaultValues: getAccountFormValues(editingAccount),
+    defaultValues: getAccountFormValues(editingAccount, resolvedType),
   });
 
   useEffect(() => {
-    form.reset(getAccountFormValues(editingAccount));
-  }, [editingAccount, form]);
+    form.reset(getAccountFormValues(editingAccount, resolvedType));
+  }, [editingAccount, resolvedType, form]);
 
   const type = form.watch('type');
   const color = form.watch('color');
@@ -340,37 +356,39 @@ function AccountForm({ editingAccount, onSubmit, onOpenChange, isSubmitting }: A
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="type"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Account Type *</FormLabel>
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={!!editingAccount}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {accountTypes.map(t => (
-                      <SelectItem key={t.value} value={t.value}>
-                        <div className="flex items-center gap-2">
-                          <t.icon size={16} />
-                          {t.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          {!lockType && (
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Account Type *</FormLabel>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={!!editingAccount}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {accountTypes.map(t => (
+                        <SelectItem key={t.value} value={t.value}>
+                          <div className="flex items-center gap-2">
+                            <t.icon size={16} />
+                            {t.label}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           <FormField
             control={form.control}
@@ -697,13 +715,17 @@ export function AccountFormDialog({
   onSubmit,
   editingAccount,
   isSubmitting,
+  defaultType,
+  title,
 }: AccountFormDialogProps) {
   const [formSession, setFormSession] = useState(0);
 
-  const accountLabel = useMemo(
-    () => (editingAccount ? 'Edit Account' : 'New Account'),
-    [editingAccount],
-  );
+  const accountLabel = useMemo(() => {
+    if (title) return title;
+    if (editingAccount) return 'Edit Account';
+    if (defaultType === 'credit_card') return 'New Credit Card';
+    return 'New Account';
+  }, [editingAccount, defaultType, title]);
 
   const handleOpenChange = (next: boolean) => {
     if (next) setFormSession(session => session + 1);
@@ -718,11 +740,13 @@ export function AccountFormDialog({
         </DialogHeader>
         {open && (
           <AccountForm
-            key={`${editingAccount?.id ?? 'new'}-${formSession}`}
+            key={`${editingAccount?.id ?? defaultType ?? 'new'}-${formSession}`}
             editingAccount={editingAccount}
             onSubmit={onSubmit}
             onOpenChange={onOpenChange}
             isSubmitting={isSubmitting}
+            defaultType={defaultType}
+            lockType={defaultType != null && !editingAccount}
           />
         )}
       </DialogContent>

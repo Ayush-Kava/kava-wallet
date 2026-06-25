@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { Document } from '@/types/document-types';
 import { File, FileText, Image, Receipt } from 'lucide-react';
-import Link from 'next/link';
+import { AppLink } from '@/components/atoms/AppLink';
 import { ROUTES } from '@/lib/constants/routes';
 
 interface DocumentCardProps {
@@ -62,7 +62,9 @@ export function DocumentCard({ document, onDelete }: DocumentCardProps) {
 
         <div className="flex gap-2 pt-2">
           <Button asChild size="sm" variant="default" className="flex-1">
-            <Link href={ROUTES.document(document.id)}>View Details</Link>
+            <AppLink href={ROUTES.document(document.id)}>
+              View Details
+            </AppLink>
           </Button>
           {onDelete && (
             <Button size="sm" variant="outline" onClick={() => onDelete(document.id)}>

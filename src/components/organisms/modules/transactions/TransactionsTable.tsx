@@ -1,8 +1,9 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import EmptyState from './EmptyState';
-import Link from 'next/link';
 import { PaginatedTable, type Column } from '@/components/molecules/common/DataTable';
+import { ROUTES } from '@/lib/constants/routes';
 import type { Transaction } from '@/types/transaction-types';
 
 type TransactionsTableProps = {
@@ -41,7 +42,8 @@ export default function TransactionsTable({
   totalCount,
   onPageChange,
 }: TransactionsTableProps) {
-  // Calculate totals
+  const router = useRouter();
+
   const totalExpenses = transactions
     .filter(t => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
@@ -53,43 +55,31 @@ export default function TransactionsTable({
   const columns: Column<Transaction>[] = [
     {
       header: 'Date',
-      accessor: transaction => (
-        <Link href={`/app/transactions/${transaction.id}`} className="hover:underline">
-          {formatDate(transaction.date)}
-        </Link>
-      ),
+      accessor: transaction => formatDate(transaction.date),
     },
     {
       header: 'Description',
       accessor: transaction => (
-        <Link href={`/app/transactions/${transaction.id}`} className="hover:underline">
-          <div>
-            <div className="font-medium text-foreground">
-              {transaction.description || 'No description'}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {transaction.categories?.name || 'Uncategorized'}
-            </div>
+        <div>
+          <div className="font-medium text-foreground">
+            {transaction.description || 'No description'}
           </div>
-        </Link>
+          <div className="text-xs text-muted-foreground">
+            {transaction.categories?.name || 'Uncategorized'}
+          </div>
+        </div>
       ),
     },
     {
       header: 'Account',
-      accessor: transaction => (
-        <Link href={`/app/transactions/${transaction.id}`} className="hover:underline">
-          {transaction.accounts?.name || 'Unknown Account'}
-        </Link>
-      ),
+      accessor: transaction => transaction.accounts?.name || 'Unknown Account',
     },
     {
       header: 'Amount',
       accessor: transaction => (
-        <Link href={`/app/transactions/${transaction.id}`} className="hover:underline">
-          <span className={transaction.type === 'income' ? 'text-success' : 'text-destructive'}>
-            {formatAmount(transaction.amount, transaction.type)}
-          </span>
-        </Link>
+        <span className={transaction.type === 'income' ? 'text-success' : 'text-destructive'}>
+          {formatAmount(transaction.amount, transaction.type)}
+        </span>
       ),
       className: 'text-right',
     },
@@ -115,6 +105,7 @@ export default function TransactionsTable({
       totalPages={totalPages}
       totalCount={totalCount}
       onPageChange={onPageChange}
+      onRowClick={transaction => router.push(ROUTES.transaction(transaction.id))}
       footerContent={() => (
         <div className="flex items-center gap-4 text-sm font-medium">
           <div className="flex items-center gap-2">

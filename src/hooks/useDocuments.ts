@@ -12,15 +12,32 @@ import { useToast } from './useToast';
 
 const DOCUMENTS_QUERY_KEY = ['documents'];
 
-export const useDocuments = () => {
+/** Upcoming reminders only — does not load the full documents list. */
+export const useUpcomingReminders = () => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['document-reminders', 'upcoming'],
+    queryFn: () => documentsApi.getUpcomingReminders(),
+    enabled: !!user,
+  });
+};
+
+type UseDocumentsOptions = {
+  /** When false, skips the documents list query (mutations still work). Default: true */
+  loadList?: boolean;
+};
+
+export const useDocuments = (options?: UseDocumentsOptions) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const loadList = options?.loadList ?? true;
 
   const getDocuments = useQuery({
     queryKey: DOCUMENTS_QUERY_KEY,
     queryFn: () => documentsApi.getDocuments(),
-    enabled: !!user,
+    enabled: !!user && loadList,
   });
 
   const useDocument = (documentId: string) =>
@@ -30,11 +47,7 @@ export const useDocuments = () => {
       enabled: !!user && !!documentId,
     });
 
-  const getUpcomingReminders = useQuery({
-    queryKey: ['document-reminders', 'upcoming'],
-    queryFn: () => documentsApi.getUpcomingReminders(),
-    enabled: !!user,
-  });
+  const getUpcomingReminders = useUpcomingReminders();
 
   const createDocument = useMutation({
     mutationFn: (payload: CreateDocumentData) => documentsApi.createDocument(payload),

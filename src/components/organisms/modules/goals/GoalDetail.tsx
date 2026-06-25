@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import { AppLink } from '@/components/atoms/AppLink';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/organisms/layout/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
@@ -57,9 +57,132 @@ import {
   PlayCircle,
 } from 'lucide-react';
 import { formatDateStr } from '@/lib/ledger-utils';
+import { ROUTES } from '@/lib/constants/routes';
 
 interface GoalDetailProps {
   goalId: string;
+}
+
+interface GoalAddFundingFormProps {
+  onSubmit: (payload: CreateGoalFundingData) => Promise<void>;
+  onCancel: () => void;
+  isSubmitting: boolean;
+  goalId: string;
+}
+
+function GoalAddFundingForm({
+  onSubmit,
+  onCancel,
+  isSubmitting,
+  goalId,
+}: GoalAddFundingFormProps) {
+  const { accounts } = useAccounts();
+  const { investments } = useInvestments();
+  const [fundingForm, setFundingForm] = useState<{
+    source_type: 'account' | 'investment';
+    source_id: string;
+    allocated_amount: number;
+  }>({
+    source_type: 'account',
+    source_id: '',
+    allocated_amount: 0,
+  });
+
+  const handleAddFunding = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await onSubmit({
+      goal_id: goalId,
+      source_type: fundingForm.source_type,
+      source_id: fundingForm.source_id,
+      allocated_amount: fundingForm.allocated_amount,
+    });
+  };
+
+  return (
+    <form className="space-y-4" onSubmit={handleAddFunding}>
+      <div className="space-y-2">
+        <Label>Source Type *</Label>
+        <Select
+          value={fundingForm.source_type}
+          onValueChange={(value: 'account' | 'investment') =>
+            setFundingForm(prev => ({
+              ...prev,
+              source_type: value,
+              source_id: '',
+            }))
+          }
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="account">Bank Account</SelectItem>
+            <SelectItem value="investment">Investment</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>{fundingForm.source_type === 'account' ? 'Account' : 'Investment'} *</Label>
+        <Select
+          value={fundingForm.source_id}
+          onValueChange={value => setFundingForm(prev => ({ ...prev, source_id: value }))}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder={`Select ${fundingForm.source_type}`} />
+          </SelectTrigger>
+          <SelectContent>
+            {fundingForm.source_type === 'account'
+              ? accounts.map(acc => (
+                  <SelectItem key={acc.id} value={acc.id}>
+                    {acc.name} (₹{acc.balance.toLocaleString('en-IN')})
+                  </SelectItem>
+                ))
+              : investments.map(inv => (
+                  <SelectItem key={inv.id} value={inv.id}>
+                    {inv.name} (₹
+                    {inv.current_value.toLocaleString('en-IN')})
+                  </SelectItem>
+                ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Allocated Amount *</Label>
+        <Input
+          type="number"
+          placeholder="0.00"
+          step="0.01"
+          min="0"
+          value={fundingForm.allocated_amount || ''}
+          onChange={e =>
+            setFundingForm(prev => ({
+              ...prev,
+              allocated_amount: parseFloat(e.target.value) || 0,
+            }))
+          }
+          required
+        />
+      </div>
+
+      <div className="flex justify-end gap-3">
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Adding...
+            </>
+          ) : (
+            'Add Funding'
+          )}
+        </Button>
+      </div>
+    </form>
+  );
 }
 
 export default function GoalDetail({ goalId }: GoalDetailProps) {
@@ -75,21 +198,10 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
     isAddingFunding,
   } = useGoals();
   const { data: goal, isLoading } = useGoal(goalId);
-  const { accounts } = useAccounts();
-  const { investments } = useInvestments();
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [fundingDialogOpen, setFundingDialogOpen] = useState(false);
-  const [fundingForm, setFundingForm] = useState<{
-    source_type: 'account' | 'investment';
-    source_id: string;
-    allocated_amount: number;
-  }>({
-    source_type: 'account',
-    source_id: '',
-    allocated_amount: 0,
-  });
 
   const handleUpdate = async (data: CreateGoalData | UpdateGoalData) => {
     await updateGoal({
@@ -104,21 +216,9 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
     router.push('/app/goals');
   };
 
-  const handleAddFunding = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const payload: CreateGoalFundingData = {
-      goal_id: goalId,
-      source_type: fundingForm.source_type,
-      source_id: fundingForm.source_id,
-      allocated_amount: fundingForm.allocated_amount,
-    };
+  const handleAddFunding = async (payload: CreateGoalFundingData) => {
     await addFunding(payload);
     setFundingDialogOpen(false);
-    setFundingForm({
-      source_type: 'account',
-      source_id: '',
-      allocated_amount: 0,
-    });
   };
 
   const handleRemoveFunding = async (fundingId: string) => {
@@ -151,9 +251,9 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link href="/app/goals" className="gap-2">
+            <AppLink href={ROUTES.goals} className="gap-2">
               <ArrowLeft size={16} /> Back
-            </Link>
+            </AppLink>
           </Button>
           <Button
             variant="outline"
@@ -432,89 +532,14 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
             <DialogTitle>Add Funding Source</DialogTitle>
             <DialogDescription>Link an account or investment to this goal</DialogDescription>
           </DialogHeader>
-          <form className="space-y-4" onSubmit={handleAddFunding}>
-            <div className="space-y-2">
-              <Label>Source Type *</Label>
-              <Select
-                value={fundingForm.source_type}
-                onValueChange={(value: 'account' | 'investment') =>
-                  setFundingForm(prev => ({
-                    ...prev,
-                    source_type: value,
-                    source_id: '',
-                  }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="account">Bank Account</SelectItem>
-                  <SelectItem value="investment">Investment</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{fundingForm.source_type === 'account' ? 'Account' : 'Investment'} *</Label>
-              <Select
-                value={fundingForm.source_id}
-                onValueChange={value => setFundingForm(prev => ({ ...prev, source_id: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={`Select ${fundingForm.source_type}`} />
-                </SelectTrigger>
-                <SelectContent>
-                  {fundingForm.source_type === 'account'
-                    ? accounts.map(acc => (
-                        <SelectItem key={acc.id} value={acc.id}>
-                          {acc.name} (₹{acc.balance.toLocaleString('en-IN')})
-                        </SelectItem>
-                      ))
-                    : investments.map(inv => (
-                        <SelectItem key={inv.id} value={inv.id}>
-                          {inv.name} (₹
-                          {inv.current_value.toLocaleString('en-IN')})
-                        </SelectItem>
-                      ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Allocated Amount *</Label>
-              <Input
-                type="number"
-                placeholder="0.00"
-                step="0.01"
-                min="0"
-                value={fundingForm.allocated_amount || ''}
-                onChange={e =>
-                  setFundingForm(prev => ({
-                    ...prev,
-                    allocated_amount: parseFloat(e.target.value) || 0,
-                  }))
-                }
-                required
-              />
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <Button type="button" variant="outline" onClick={() => setFundingDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isAddingFunding}>
-                {isAddingFunding ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Adding...
-                  </>
-                ) : (
-                  'Add Funding'
-                )}
-              </Button>
-            </div>
-          </form>
+          {fundingDialogOpen ? (
+            <GoalAddFundingForm
+              goalId={goalId}
+              onSubmit={handleAddFunding}
+              onCancel={() => setFundingDialogOpen(false)}
+              isSubmitting={isAddingFunding}
+            />
+          ) : null}
         </DialogContent>
       </Dialog>
     </DashboardLayout>

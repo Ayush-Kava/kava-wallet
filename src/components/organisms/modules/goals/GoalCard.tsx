@@ -1,9 +1,10 @@
-import Link from 'next/link';
+import { AppLink } from '@/components/atoms/AppLink';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import type { GoalWithFunding } from '@/types/goal-types';
 import { GOAL_PRIORITY_LABELS, GOAL_PRIORITY_COLORS } from '@/types/goal-types';
+import { ROUTES } from '@/lib/constants/routes';
 import { Calendar } from 'lucide-react';
 import { formatDateStr } from '@/lib/ledger-utils';
 
@@ -18,7 +19,7 @@ export function GoalCard({ goal }: GoalCardProps) {
   );
 
   return (
-    <Link href={`/goals/${goal.id}`}>
+    <AppLink href={ROUTES.goal(goal.id)}>
       <Card className="h-full cursor-pointer transition-shadow hover:shadow-lg">
         <CardHeader>
           <div className="flex items-start justify-between">
@@ -75,6 +76,6 @@ export function GoalCard({ goal }: GoalCardProps) {
           )}
         </CardContent>
       </Card>
-    </Link>
+    </AppLink>
   );
 }

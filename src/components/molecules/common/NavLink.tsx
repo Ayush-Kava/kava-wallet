@@ -1,7 +1,7 @@
 'use client';
 
 import { forwardRef } from 'react';
-import Link from 'next/link';
+import { AppLink } from '@/components/atoms/AppLink';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
@@ -17,9 +17,9 @@ const NavLink = forwardRef<HTMLAnchorElement, NavLinkProps>(
     const isActive = pathname === href || pathname?.startsWith(href + '/');
 
     return (
-      <Link ref={ref} href={href} className={cn(className, isActive && activeClassName)} {...props}>
+      <AppLink ref={ref} href={href} className={cn(className, isActive && activeClassName)} {...props}>
         {children}
-      </Link>
+      </AppLink>
     );
   },
 );

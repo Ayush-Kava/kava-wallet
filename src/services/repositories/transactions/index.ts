@@ -25,12 +25,15 @@ import {
 } from '@/types/transaction-types';
 import type { Prisma } from '@prisma/client';
 
-const buildTransferPublicIdMap = async (rows: { transfer_id: number | null }[]) => {
+const buildTransferPublicIdMap = async (
+  userId: number,
+  rows: { transfer_id: number | null }[],
+) => {
   const internalIds = [...new Set(rows.map(r => r.transfer_id).filter((id): id is number => id != null))];
   if (!internalIds.length) return new Map<number, string>();
 
   const txs = await prisma.transaction.findMany({
-    where: { id: { in: internalIds } },
+    where: { userId, id: { in: internalIds } },
     select: { id: true, publicId: true },
   });
   return new Map(txs.map(tx => [tx.id, tx.publicId]));
@@ -40,7 +43,7 @@ const mapRows = async (
   userId: number,
   rows: Parameters<typeof toTransactionType>[0][],
 ) => {
-  const transferMap = await buildTransferPublicIdMap(rows);
+  const transferMap = await buildTransferPublicIdMap(userId, rows);
   const labels = await getAccountSummaryByPublicIds(
     userId,
     rows.map(tx => tx.account?.publicId ?? '').filter(Boolean),

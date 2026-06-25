@@ -30,6 +30,7 @@ export interface PaginatedTableProps<T extends { id: string | number }> {
   totalPages?: number;
   totalCount?: number;
   onPageChange?: (page: number) => void;
+  onRowClick?: (item: T) => void;
 }
 
 export function PaginatedTable<T extends { id: string | number }>({
@@ -44,6 +45,7 @@ export function PaginatedTable<T extends { id: string | number }>({
   totalPages: externalTotalPages,
   totalCount: externalTotalCount,
   onPageChange,
+  onRowClick,
 }: PaginatedTableProps<T>) {
   const [internalPage, setInternalPage] = useState(1);
 
@@ -155,7 +157,11 @@ export function PaginatedTable<T extends { id: string | number }>({
                 </TableRow>
               ))
             : displayData.map(item => (
-                <TableRow key={item.id}>
+                <TableRow
+                  key={item.id}
+                  className={onRowClick ? 'cursor-pointer hover:bg-muted/50' : undefined}
+                  onClick={onRowClick ? () => onRowClick(item) : undefined}
+                >
                   {columns.map((column, colIdx) => (
                     <TableCell key={colIdx} className={column.className}>
                       {renderCellContent(item, column)}

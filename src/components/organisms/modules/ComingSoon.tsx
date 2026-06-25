@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Rocket, ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
+import { AppLink } from '@/components/atoms/AppLink';
+import { ROUTES } from '@/lib/constants/routes';
 
 interface ComingSoonProps {
   title: string;
@@ -23,10 +24,10 @@ const ComingSoon = ({ title, description }: ComingSoonProps) => {
         </CardHeader>
         <CardContent className="flex items-center justify-center">
           <Button asChild variant="outline">
-            <Link href="/dashboard" className="flex items-center gap-2">
+            <AppLink href={ROUTES.dashboard} className="flex items-center gap-2">
               <ArrowLeft size={16} />
               Back to Dashboard
-            </Link>
+            </AppLink>
           </Button>
         </CardContent>
       </Card>

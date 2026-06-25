@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSummaryTransactions } from '@/hooks/useSummaryTransactions';
 import { useAccounts } from '@/hooks/useAccounts';
-import { useDocuments } from '@/hooks/useDocuments';
+import { useUpcomingReminders } from '@/hooks/useDocuments';
 import { ROUTES } from '@/lib/constants/routes';
 import { useUiStore } from '@/store/ui/use-ui-store';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -22,24 +22,24 @@ import {
   Bell,
   Loader2,
 } from 'lucide-react';
-import Link from 'next/link';
+import { AppLink } from '@/components/atoms/AppLink';
 
 const Dashboard = () => {
   const { transactions } = useSummaryTransactions();
   const { accounts, totalBalance } = useAccounts();
-  const { getUpcomingReminders } = useDocuments();
+  const { data: upcomingRemindersData, isLoading: remindersLoading } = useUpcomingReminders();
   const { openTransactionDialog } = useUiStore();
 
   const upcomingReminders = useMemo(() => {
     const now = new Date();
     const horizon = addDays(now, 30);
-    return (getUpcomingReminders.data || [])
+    return (upcomingRemindersData || [])
       .filter(r => {
         const date = new Date(r.reminder_date);
         return !isBefore(date, now) && !isAfter(date, horizon);
       })
       .slice(0, 5);
-  }, [getUpcomingReminders.data]);
+  }, [upcomingRemindersData]);
 
   const currentMonthStats = useMemo(() => {
     const now = new Date();
@@ -76,7 +76,9 @@ const Dashboard = () => {
       actions={
         <div className="flex items-center gap-1.5">
           <Button variant="outline" size="xs" asChild>
-            <Link href={ROUTES.analytics}>View Analytics</Link>
+            <AppLink href={ROUTES.analytics}>
+              View Analytics
+            </AppLink>
           </Button>
           <Button size="xs" onClick={() => openTransactionDialog({ mode: 'expense' })}>
             Add Transaction
@@ -145,7 +147,9 @@ const Dashboard = () => {
             <CardHeader className="flex shrink-0 flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-base font-semibold">Recent Transactions</CardTitle>
               <Button variant="ghost" size="sm" asChild>
-                <Link href={ROUTES.transactions}>View All</Link>
+                <AppLink href={ROUTES.transactions}>
+                  View All
+                </AppLink>
               </Button>
             </CardHeader>
             <CardContent className="min-h-0 flex-1 overflow-hidden">
@@ -219,7 +223,9 @@ const Dashboard = () => {
             <CardHeader className="flex shrink-0 flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-base font-semibold">Your Accounts</CardTitle>
               <Button variant="ghost" size="sm" asChild>
-                <Link href={ROUTES.accounts}>Manage</Link>
+                <AppLink href={ROUTES.accounts}>
+                  Manage
+                </AppLink>
               </Button>
             </CardHeader>
             <CardContent className="min-h-0 flex-1 overflow-hidden">
@@ -228,7 +234,9 @@ const Dashboard = () => {
                   <div>
                     <p>No accounts yet.</p>
                     <Button variant="link" asChild>
-                      <Link href={ROUTES.accounts}>Add your first account</Link>
+                      <AppLink href={ROUTES.accounts}>
+                        Add your first account
+                      </AppLink>
                     </Button>
                   </div>
                 </div>
@@ -277,11 +285,13 @@ const Dashboard = () => {
                 Upcoming Reminders
               </CardTitle>
               <Button variant="ghost" size="sm" asChild>
-                <Link href={ROUTES.documents}>View Documents</Link>
+                <AppLink href={ROUTES.documents}>
+                  View Documents
+                </AppLink>
               </Button>
             </CardHeader>
             <CardContent className="min-h-0 flex-1 overflow-hidden">
-              {getUpcomingReminders.isLoading ? (
+              {remindersLoading ? (
                 <div className="flex h-full items-center gap-2 text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading reminders...
@@ -301,7 +311,7 @@ const Dashboard = () => {
                       const isDueSoon = daysUntil <= 7;
 
                       return (
-                        <Link
+                        <AppLink
                           key={reminder.id}
                           href={ROUTES.document(reminder.document_id)}
                           className="flex items-center justify-between rounded-lg bg-muted/50 p-3 transition-colors hover:bg-muted"
@@ -320,7 +330,7 @@ const Dashboard = () => {
                                 ? 'Tomorrow'
                                 : `${daysUntil} days`}
                           </Badge>
-                        </Link>
+                        </AppLink>
                       );
                     })}
                   </div>

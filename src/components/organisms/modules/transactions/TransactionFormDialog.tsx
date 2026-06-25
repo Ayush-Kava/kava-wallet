@@ -116,7 +116,7 @@ function TransactionFormBody({
     useTransactions(1, 7, undefined, {
       enableList: false,
     });
-  const { createAccount, isCreatingAccount } = useAccounts();
+  const { createAccount, isCreatingAccount } = useAccounts({ enabled: false });
 
   const initial = createFormState(sanitizedDefaults, accounts);
   const preserveAccountRef = useRef(initial.preserveAccount);
@@ -538,14 +538,6 @@ export function TransactionFormDialog({
   defaults = {},
 }: TransactionFormDialogProps) {
   const { user } = useAuth();
-  const { accounts } = useAccounts();
-  const { incomeCategories, expenseCategories } = useCategories();
-
-  const sanitizedDefaults = useMemo(
-    () =>
-      sanitizeTransactionDialogDefaults(defaults, accounts, incomeCategories, expenseCategories),
-    [defaults, accounts, incomeCategories, expenseCategories],
-  );
 
   if (!user) return null;
 
@@ -557,17 +549,42 @@ export function TransactionFormDialog({
           <DialogDescription>Account, amount, save — done.</DialogDescription>
         </DialogHeader>
 
-        {open && (
-          <TransactionFormBody
+        {open ? (
+          <TransactionFormDialogContent
             key={formKey}
-            sanitizedDefaults={sanitizedDefaults}
-            accounts={accounts}
-            incomeCategories={incomeCategories}
-            expenseCategories={expenseCategories}
+            defaults={defaults}
             onOpenChange={onOpenChange}
           />
-        )}
+        ) : null}
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Fetches accounts/categories only while the dialog is open (avoids global layout tax). */
+function TransactionFormDialogContent({
+  defaults,
+  onOpenChange,
+}: {
+  defaults: TransactionDialogDefaults;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { accounts } = useAccounts();
+  const { incomeCategories, expenseCategories } = useCategories();
+
+  const sanitizedDefaults = useMemo(
+    () =>
+      sanitizeTransactionDialogDefaults(defaults, accounts, incomeCategories, expenseCategories),
+    [defaults, accounts, incomeCategories, expenseCategories],
+  );
+
+  return (
+    <TransactionFormBody
+      sanitizedDefaults={sanitizedDefaults}
+      accounts={accounts}
+      incomeCategories={incomeCategories}
+      expenseCategories={expenseCategories}
+      onOpenChange={onOpenChange}
+    />
   );
 }

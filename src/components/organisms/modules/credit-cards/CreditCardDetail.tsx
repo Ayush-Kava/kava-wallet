@@ -3,14 +3,16 @@
 import { useMemo } from 'react';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useUiStore } from '@/store/ui/use-ui-store';
+import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/organisms/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import AccountLedgerTable from '@/components/organisms/modules/account/AccountLedgerTable';
 import { useAccountLedger } from '@/hooks/useAccountLedger';
-import { useAccounts } from '@/hooks/useAccounts';
+import { accountsApi } from '@/services/api/accounts';
 import { formatCurrency, formatDateStr } from '@/lib/ledger-utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, ArrowLeft, CreditCard } from 'lucide-react';
@@ -27,8 +29,9 @@ const toDateOrNull = (value?: string | null) => {
 
 export default function CreditCardDetail({ cardId }: CreditCardDetailProps) {
   const router = useRouter();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { openTransactionDialog } = useUiStore();
-  const { accounts } = useAccounts();
   const { account, transactions, transferPartners, isLoading } = useAccountLedger(cardId);
 
   const statementWindow = useMemo(() => {
@@ -98,7 +101,11 @@ export default function CreditCardDetail({ cardId }: CreditCardDetailProps) {
     return account.balance - netActivity;
   }, [account, transactions]);
 
-  const handlePayBill = () => {
+  const handlePayBill = async () => {
+    const accounts = await queryClient.fetchQuery({
+      queryKey: ['accounts', user?.id],
+      queryFn: () => accountsApi.getAccounts(),
+    });
     const bankAccount = accounts.find(acc => acc.type === 'bank');
     openTransactionDialog({
       mode: 'transfer',

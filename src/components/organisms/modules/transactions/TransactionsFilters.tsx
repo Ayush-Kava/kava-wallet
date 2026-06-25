@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { DateRangeCalendar } from '@/components/molecules/common/DateRangeCalendar';
 import { SearchInput } from '@/components/molecules/common/SearchInput';
 import { DropdownButton, type DropdownButtonItem } from '@/components/atoms/DropdownButton';
@@ -32,8 +33,14 @@ export default function TransactionsFilters({
   accountLabel,
   categoryLabel,
 }: TransactionsFiltersProps) {
-  const { accounts } = useAccounts();
-  const { categories } = useCategories();
+  const [filterOptionsRequested, setFilterOptionsRequested] = useState(false);
+
+  const requestFilterOptions = () => {
+    setFilterOptionsRequested(true);
+  };
+
+  const { accounts } = useAccounts({ enabled: filterOptionsRequested });
+  const { categories } = useCategories({ enabled: filterOptionsRequested });
 
   const accountItems: DropdownButtonItem[] = [
     {
@@ -84,6 +91,7 @@ export default function TransactionsFilters({
         }
         items={accountItems}
         align="start"
+        onOpenChange={open => open && requestFilterOptions()}
       />
       <DropdownButton
         trigger={
@@ -94,6 +102,7 @@ export default function TransactionsFilters({
         }
         items={categoryItems}
         align="start"
+        onOpenChange={open => open && requestFilterOptions()}
       />
       <DropdownButton
         trigger={

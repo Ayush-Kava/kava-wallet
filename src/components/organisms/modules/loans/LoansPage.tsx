@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import { AppLink } from '@/components/atoms/AppLink';
 import { useLoans } from '@/hooks/useLoans';
 import { useToast } from '@/hooks/useToast';
 import { Button } from '@/components/atoms/Button';
@@ -171,7 +171,9 @@ export default function LoansPage() {
                         </TableCell>
                         <TableCell>
                           <Button asChild variant="outline" size="sm">
-                            <Link href={ROUTES.loan(loan.id)}>View</Link>
+                            <AppLink href={ROUTES.loan(loan.id)}>
+                              View
+                            </AppLink>
                           </Button>
                         </TableCell>
                       </TableRow>
