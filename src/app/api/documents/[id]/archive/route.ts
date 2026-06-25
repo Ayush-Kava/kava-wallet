@@ -1,23 +1,27 @@
 import { NextRequest } from 'next/server';
-import { requireUser } from '@/lib/auth';
+import { authUser } from '@/lib/auth';
+import { parsePublicId } from '@/lib/public-id';
 import {
   successResponse,
+  errorResponse,
   notFoundResponse,
-  internalServerErrorResponse,
-  unauthorizedResponse,
 } from '@/lib/utils/response';
+import { handleRouteError } from '@/lib/utils/handle-route-error';
+import { ERRORS } from '@/lib/utils/errors';
 import { archive } from '@/services/repositories/documents';
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const user = await requireUser();
-    const archived = await archive(user.id, id);
+    const publicId = parsePublicId(id);
+    if (!publicId) return errorResponse(ERRORS.GENERIC_BAD_REQUEST);
+
+    const user = await authUser();
+    const archived = await archive(user.id, publicId);
     if (!archived) return notFoundResponse();
     return successResponse({});
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Document archive error', error);
-    if (error?.message === 'Unauthorized') return unauthorizedResponse();
-    return internalServerErrorResponse();
+    return handleRouteError(error);
   }
 }

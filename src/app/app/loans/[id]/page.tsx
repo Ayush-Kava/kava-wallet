@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Trash2 } from 'lucide-react';
-import { ProtectedRoute } from '@/components/molecules/common/ProtectedRoute';
+import { parsePublicId } from '@/lib/public-id';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/useToast';
 import { formatCurrency } from '@/lib/utils';
@@ -245,11 +245,15 @@ function LoanDetailContent({ loanId }: { loanId: string }) {
 
 export default function LoanDetail() {
   const params = useParams();
-  const loanId = params.id as string;
+  const loanId = parsePublicId(String(params.id ?? ''));
 
-  return (
-    <ProtectedRoute>
-      <LoanDetailContent loanId={loanId} />
-    </ProtectedRoute>
-  );
+  if (!loanId) {
+    return (
+      <DashboardLayout title="Loan Not Found" description="">
+        <div className="text-red-600">Invalid loan ID</div>
+      </DashboardLayout>
+    );
+  }
+
+  return <LoanDetailContent loanId={loanId} />;
 }

@@ -1,0 +1,88 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+# Project Structure
+
+**Description:**
+Defines the directory and file organization for the Unified Boilerplate project. Ensures consistency and maintainability across the codebase. Make sure any file you create under below structure. Make sure you don't put component outside of this directory structure untill and unless it doesn't fit
+
+**Auto Attachments:**
+
+- Applies to all files and folders in the repository.
+
+The project follows a well-organized directory structure:
+
+```
+tracko/
+├── src/
+│   ├── app/                    # Next.js app router pages and layouts
+│   │   ├── api/               # API routes and endpoints
+│   │   ├── (auth)/           # Authentication related pages
+│   │   └── (dashboard)/      # Dashboard related pages
+│   │
+│   ├── components/            # Reusable UI components
+│   │   ├── atom/             # Basic building blocks (buttons, inputs, etc.)
+│   │   ├── molecules/        # Combinations of atoms (form fields, cards, etc.)
+│   │   ├── organisms/        # Complex UI components (forms, tables, etc.)
+│   │   ├── icons/            # SVG icons and icon components
+│   │   └── branding/         # Landing page components
+│   │
+│   ├── lib/                  # Utility functions and shared logic
+│   │   ├── prisma/          # Database client and utilities
+│   │   ├── utils/           # Helper functions
+│   │   └── constants/       # Application constants
+│   │
+│   ├── providers/           # Context providers and wrappers
+│   │   ├── auth/           # Authentication providers
+│   │   └── theme/          # Theme providers
+│   │
+│   ├── services/           # API services and external integrations
+│   │   ├── api/           # API client and endpoints
+│   │   └── external/      # Third-party service integrations
+│   │   └── internal/      # Backend reusable services
+│   │   └── repositories/      # Database/ORM service calls
+│   │
+│   ├── store/             # Zustand store configurations
+│   │   ├── auth/         # Authentication state
+│   │   └── ui/           # UI state management
+│   │
+│   ├── types/            # TypeScript type definitions
+│   │   ├── api/         # API types
+│   │   └── models/      # Data model types
+│   │
+│   ├── data/            # Static data and constants
+│   │   ├── mock/       # Mock data for development
+│   │   └── config/     # Configuration data
+│   │
+│   └── styles/         # Global styles and Tailwind configurations
+│       ├── globals/    # Global CSS
+│       └── themes/     # Theme configurations
+│
+├── prisma/             # Database schema and migrations
+│   ├── migrations/    # Database migration files
+│   └── seed/         # Database seed data
+│
+├── public/            # Static assets
+│   ├── images/       # Image assets
+│   └── fonts/        # Font files
+│
+└── supabase/         # Supabase configurations
+    ├── functions/    # Edge functions
+    └── config/      # Supabase configuration files
+```
+
+## Component Architecture
+
+The project follows Atomic Design principles for component organization:
+
+- **Atom**: Basic building blocks (buttons, inputs, labels)
+- **Molecules**: Combinations of atoms (form fields, search bars)
+- **Organisms**: Complex UI components (navigation, forms, tables)
+- **Features**: Feature-specific components that combine organisms
+- **Icons**: Reusable icon components
+- **Branding**: All components for landing page.
+
+When creating new file, strictly follow above directory and file structure.

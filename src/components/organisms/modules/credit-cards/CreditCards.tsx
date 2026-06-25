@@ -145,7 +145,12 @@ export default function CreditCards() {
         ...result.data,
       });
     } else {
-      await createAccount({ type: 'credit_card', ...result.data });
+      await createAccount({
+        type: 'credit_card',
+        card_number: '0000',
+        expiry_date: '12/99',
+        ...result.data,
+      });
     }
 
     setDialogOpen(false);

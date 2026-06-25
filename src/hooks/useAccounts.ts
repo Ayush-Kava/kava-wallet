@@ -13,15 +13,13 @@ export const useAccounts = () => {
 
   const { data: accounts, isLoading } = useQuery<Account[]>({
     queryKey: ['accounts', user?.id],
-    queryFn: async () => {
-      return accountsApi.getAccounts(user!.id);
-    },
+    queryFn: () => accountsApi.getAccounts(),
     enabled: !!user,
   });
 
   const createAccountMutation = useMutation({
     mutationFn: async (data: CreateAccountData) => {
-      await accountsApi.createAccount(user!.id, data);
+      await accountsApi.createAccount(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
@@ -38,7 +36,7 @@ export const useAccounts = () => {
 
   const updateAccountMutation = useMutation({
     mutationFn: async ({ id, ...data }: Partial<CreateAccountData> & { id: string }) => {
-      await accountsApi.updateAccount(user!.id, { id, ...data });
+      await accountsApi.updateAccount({ id, ...data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
@@ -55,7 +53,7 @@ export const useAccounts = () => {
 
   const deleteAccountMutation = useMutation({
     mutationFn: async (id: string) => {
-      await accountsApi.deleteAccount(user!.id, id);
+      await accountsApi.deleteAccount(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] });

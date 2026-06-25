@@ -1,9 +1,10 @@
+import { asPublicId } from '@/lib/public-id';
+
 export type GoalPriority = 'low' | 'medium' | 'high';
 export type GoalStatus = 'active' | 'completed' | 'paused';
 
 export interface Goal {
   id: string;
-  user_id: string;
   name: string;
   target_amount: number;
   target_date: string;
@@ -17,7 +18,6 @@ export interface Goal {
 export interface GoalFunding {
   id: string;
   goal_id: string;
-  user_id: string;
   source_type: 'account' | 'investment';
   source_id: string;
   allocated_amount: number;
@@ -98,8 +98,7 @@ const mapGoalStatusToDb = (status?: GoalStatus): string | undefined => {
 };
 
 export const toGoalType = (goal: any): Goal => ({
-  id: goal.id,
-  user_id: goal.userId,
+  id: asPublicId(goal.publicId),
   name: goal.name,
   target_amount: Number(goal.target_amount),
   target_date: goal.target_date?.toISOString().split('T')[0],
@@ -111,11 +110,10 @@ export const toGoalType = (goal: any): Goal => ({
 });
 
 export const toGoalFundingType = (funding: any): GoalFunding => ({
-  id: funding.id,
-  goal_id: funding.goalId,
-  user_id: funding.userId,
+  id: asPublicId(funding.publicId),
+  goal_id: funding.goal?.publicId != null ? asPublicId(funding.goal.publicId) : '',
   source_type: funding.source_type,
-  source_id: funding.source_id,
+  source_id: asPublicId(funding.source_public_id),
   allocated_amount: Number(funding.allocated_amount),
   created_at: funding.createdAt.toISOString(),
   updated_at: funding.updatedAt.toISOString(),

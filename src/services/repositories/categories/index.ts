@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma';
 import type { Category, CreateCategoryData, UpdateCategoryData } from '@/types/category-types';
 import { toCategoryType } from '@/types/category-types';
 
-export const listForUser = async (userId: string): Promise<Category[]> => {
+export const listForUser = async (userId: number): Promise<Category[]> => {
   const categories = await prisma.category.findMany({
     where: { OR: [{ userId }, { userId: null, is_default: true }] },
     orderBy: { name: 'asc' },
@@ -10,7 +10,7 @@ export const listForUser = async (userId: string): Promise<Category[]> => {
   return categories.map(toCategoryType);
 };
 
-export const seedDefaultsForUser = async (userId: string): Promise<void> => {
+export const seedDefaultsForUser = async (userId: number): Promise<void> => {
   const { DEFAULT_CATEGORIES } = await import('@/lib/constants/default-categories');
   await prisma.category.createMany({
     data: DEFAULT_CATEGORIES.map(c => ({
@@ -25,7 +25,7 @@ export const seedDefaultsForUser = async (userId: string): Promise<void> => {
   });
 };
 
-export const create = async (userId: string, data: CreateCategoryData): Promise<Category> => {
+export const create = async (userId: number, data: CreateCategoryData): Promise<Category> => {
   const created = await prisma.category.create({
     data: {
       userId,
@@ -39,17 +39,17 @@ export const create = async (userId: string, data: CreateCategoryData): Promise<
 };
 
 export const update = async (
-  userId: string,
-  id: string,
+  userId: number,
+  publicId: string,
   data: UpdateCategoryData,
 ): Promise<Category | null> => {
   const existing = await prisma.category.findFirst({
-    where: { id, userId },
+    where: { publicId, userId },
   });
   if (!existing) return null;
 
   const updated = await prisma.category.update({
-    where: { id },
+    where: { id: existing.id },
     data: {
       name: data.name,
       color: data.color,
@@ -59,16 +59,19 @@ export const update = async (
   return toCategoryType(updated);
 };
 
-export const remove = async (userId: string, id: string): Promise<{ ok: true } | { ok: false; reason: string }> => {
+export const remove = async (
+  userId: number,
+  publicId: string,
+): Promise<{ ok: true } | { ok: false; reason: string }> => {
   const existing = await prisma.category.findFirst({
-    where: { id, userId },
+    where: { publicId, userId },
   });
   if (!existing) return { ok: false, reason: 'not_found' };
   if (existing.is_default) return { ok: false, reason: 'default_category' };
 
   const [transactionCount, budgetCount] = await Promise.all([
-    prisma.transaction.count({ where: { categoryId: id, userId } }),
-    prisma.budget.count({ where: { categoryId: id, userId } }),
+    prisma.transaction.count({ where: { categoryId: existing.id, userId } }),
+    prisma.budget.count({ where: { categoryId: existing.id, userId } }),
   ]);
 
   if (transactionCount > 0) {
@@ -78,6 +81,6 @@ export const remove = async (userId: string, id: string): Promise<{ ok: true } |
     return { ok: false, reason: 'has_budgets' };
   }
 
-  await prisma.category.delete({ where: { id } });
+  await prisma.category.delete({ where: { id: existing.id } });
   return { ok: true };
 };

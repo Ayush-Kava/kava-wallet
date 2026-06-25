@@ -1,11 +1,13 @@
 import { NextRequest } from 'next/server';
-import { requireUser } from '@/lib/auth';
+import { authUser } from '@/lib/auth';
+import { parsePublicId } from '@/lib/public-id';
 import {
   successResponse,
+  errorResponse,
   notFoundResponse,
-  unauthorizedResponse,
-  internalServerErrorResponse,
 } from '@/lib/utils/response';
+import { handleRouteError } from '@/lib/utils/handle-route-error';
+import { ERRORS } from '@/lib/utils/errors';
 import {
   deleteTransaction,
   getDetail,
@@ -15,26 +17,31 @@ import {
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const user = await requireUser();
-    const detail = await getDetail(user.id, id);
+    const publicId = parsePublicId(id);
+    if (!publicId) return errorResponse(ERRORS.GENERIC_BAD_REQUEST);
+
+    const user = await authUser();
+    const detail = await getDetail(user.id, publicId);
     if (!detail) return notFoundResponse();
 
     return successResponse(detail);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Transaction GET error', error);
-    if (error?.message === 'Unauthorized') return unauthorizedResponse();
-    return internalServerErrorResponse();
+    return handleRouteError(error);
   }
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const user = await requireUser();
+    const publicId = parsePublicId(id);
+    if (!publicId) return errorResponse(ERRORS.GENERIC_BAD_REQUEST);
+
+    const user = await authUser();
     const body = await req.json().catch(() => ({}));
     const { account_id, category_id, type, amount, description, date } = body;
 
-    const ok = await updateTransaction(user.id, id, {
+    const ok = await updateTransaction(user.id, publicId, {
       account_id,
       category_id,
       type,
@@ -45,23 +52,24 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!ok) return notFoundResponse();
 
     return successResponse({});
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Transaction PUT error', error);
-    if (error?.message === 'Unauthorized') return unauthorizedResponse();
-    return internalServerErrorResponse();
+    return handleRouteError(error);
   }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const user = await requireUser();
-    const result = await deleteTransaction(user.id, id);
+    const publicId = parsePublicId(id);
+    if (!publicId) return errorResponse(ERRORS.GENERIC_BAD_REQUEST);
+
+    const user = await authUser();
+    const result = await deleteTransaction(user.id, publicId);
     if (!result) return notFoundResponse();
     return successResponse(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Transaction DELETE error', error);
-    if (error?.message === 'Unauthorized') return unauthorizedResponse();
-    return internalServerErrorResponse();
+    return handleRouteError(error);
   }
 }

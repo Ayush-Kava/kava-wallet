@@ -1,16 +1,11 @@
 import { prisma } from '@/lib/prisma';
-import { hashPassword, createSession, SESSION_COOKIE } from '@/lib/auth';
+import { hashPassword, createSession, SESSION_COOKIE, sanitizeAuthUser } from '@/lib/auth';
 import { signupSchema } from '@/lib/validation/auth';
 import { parseBody } from '@/lib/validation/common';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
 import { seedDefaultsForUser } from '@/services/repositories/categories';
-import { successResponse, errorResponse, internalServerErrorResponse } from '@/lib/utils/response';
-const sanitizeUser = (user: { id: string; email: string; fullName: string | null }) => ({
-  id: user.id,
-  email: user.email,
-  full_name: user.fullName,
-});
-
+import { successResponse, errorResponse } from '@/lib/utils/response';
+import { handleRouteError } from '@/lib/utils/handle-route-error';
 export async function POST(request: Request) {
   try {
     if (!rateLimit(`signup:${getClientIp(request)}`)) {
@@ -27,26 +22,23 @@ export async function POST(request: Request) {
 
     const passwordHash = await hashPassword(password);
     const user = await prisma.user.create({
-      data: { email, passwordHash, fullName: fullName ?? null },
-    });
+      data: { email, passwordHash, fullName: fullName ?? null } });
 
     await seedDefaultsForUser(user.id);
 
     const { token, expiresAt } = await createSession(user.id);
 
-    const response = successResponse({ user: sanitizeUser(user) }, 201);
+    const response = successResponse({ user: sanitizeAuthUser(user) }, 201);
 
     response.cookies.set(SESSION_COOKIE, token, {
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
       path: '/',
-      expires: expiresAt,
-    });
+      expires: expiresAt });
 
     return response;
-  } catch (error: any) {
-    console.error('Signup error', error);
-    return internalServerErrorResponse();
+  } catch (error) {
+    return handleRouteError(error);
   }
 }

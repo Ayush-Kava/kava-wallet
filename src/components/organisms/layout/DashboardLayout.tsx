@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { type ReactNode, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
@@ -47,6 +47,7 @@ import {
   Palette,
   Plus,
   Tags,
+  Building2,
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -56,7 +57,18 @@ interface DashboardLayoutProps {
   actions?: ReactNode;
 }
 
-const navGroups = [
+type NavItem = {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  path: string;
+};
+
+type NavGroup = {
+  label: string;
+  items: NavItem[];
+};
+
+const navGroups: NavGroup[] = [
   {
     label: 'Overview',
     items: [
@@ -132,6 +144,17 @@ const DashboardLayout = ({ children, title, description, actions }: DashboardLay
   const { setTheme } = useTheme();
   const { mobileMenuOpen, setMobileMenuOpen, openTransactionDialog } = useUiStore();
 
+  const sidebarNavGroups = useMemo((): NavGroup[] => {
+    const groups: NavGroup[] = [...navGroups];
+    if (user?.role === 'admin') {
+      groups.push({
+        label: 'Admin',
+        items: [{ icon: Building2, label: 'Banks', path: ROUTES.adminBanks }],
+      });
+    }
+    return groups;
+  }, [user?.role]);
+
   const handleSignOut = async () => {
     await signOut();
     router.push(ROUTES.home);
@@ -155,7 +178,7 @@ const DashboardLayout = ({ children, title, description, actions }: DashboardLay
       <Separator />
 
       <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
-        {navGroups.map(group => (
+        {sidebarNavGroups.map(group => (
           <div key={group.label}>
             <p className="mb-1.5 px-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               {group.label}

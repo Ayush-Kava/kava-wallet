@@ -18,7 +18,7 @@ export interface Column<T> {
   className?: string;
 }
 
-export interface PaginatedTableProps<T extends { id: string }> {
+export interface PaginatedTableProps<T extends { id: string | number }> {
   data: T[];
   columns: Column<T>[];
   itemsPerPage?: number;
@@ -32,7 +32,7 @@ export interface PaginatedTableProps<T extends { id: string }> {
   onPageChange?: (page: number) => void;
 }
 
-export function PaginatedTable<T extends { id: string }>({
+export function PaginatedTable<T extends { id: string | number }>({
   data,
   columns,
   itemsPerPage = 10,

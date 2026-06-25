@@ -10,7 +10,6 @@ import { apiFetch } from '@/lib/api-client';
 
 export const transactionsApi = {
   getTransactions: async (
-    _userId: string,
     page: number,
     limit: number,
     filters?: TransactionFilters,
@@ -35,37 +34,33 @@ export const transactionsApi = {
     return apiFetch<PaginatedTransactionsResult>(`/api/transactions?${params.toString()}`);
   },
 
-  createTransaction: async (_userId: string, data: CreateTransactionData): Promise<void> => {
-    await apiFetch<void>(`/api/transactions`, 'POST', data);
+  createTransaction: async (data: CreateTransactionData): Promise<void> => {
+    await apiFetch<void>('/api/transactions', 'POST', data);
   },
 
-  createTransfer: async (_userId: string, data: CreateTransferData): Promise<void> => {
-    await apiFetch<void>(`/api/transactions/transfer`, 'POST', data);
+  createTransfer: async (data: CreateTransferData): Promise<void> => {
+    await apiFetch<void>('/api/transactions/transfer', 'POST', data);
   },
 
   updateTransaction: async (
-    _userId: string,
     { id, ...data }: Partial<CreateTransactionData> & { id: string },
   ): Promise<void> => {
     await apiFetch<void>(`/api/transactions/${id}`, 'PUT', data);
   },
 
-  updateTransfer: async (_userId: string, data: UpdateTransferData): Promise<void> => {
-    await apiFetch<void>(`/api/transactions/transfer`, 'PUT', data);
+  updateTransfer: async (data: UpdateTransferData): Promise<void> => {
+    await apiFetch<void>('/api/transactions/transfer', 'PUT', data);
   },
 
-  deleteTransaction: async (_userId: string, id: string): Promise<{ deletedTransfer: boolean }> => {
+  deleteTransaction: async (id: string): Promise<{ deletedTransfer: boolean }> => {
     return apiFetch<{ deletedTransfer: boolean }>(`/api/transactions/${id}`, 'DELETE');
   },
 
-  duplicateTransaction: async (
-    _userId: string,
-    id: string,
-  ): Promise<{ duplicatedTransfer: boolean }> => {
+  duplicateTransaction: async (id: string): Promise<{ duplicatedTransfer: boolean }> => {
     return apiFetch<{ duplicatedTransfer: boolean }>(`/api/transactions/${id}/duplicate`, 'POST');
   },
 
-  getTransactionDetail: async (_userId: string, id: string): Promise<TransactionDetail> => {
+  getTransactionDetail: async (id: string): Promise<TransactionDetail> => {
     return apiFetch<TransactionDetail>(`/api/transactions/${id}`);
   },
 };

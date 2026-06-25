@@ -10,7 +10,9 @@ import type {
 } from '@/types/document-types';
 import { toDocumentType, toDocumentLinkType, toDocumentReminderType } from '@/types/document-types';
 
-export const listByUser = async (userId: string): Promise<Document[]> => {
+const documentInclude = { links: true, reminders: true } as const;
+
+export const listByUser = async (userId: number): Promise<Document[]> => {
   const documents = await prisma.document.findMany({
     where: { userId, archived: false },
     orderBy: { createdAt: 'desc' },
@@ -18,10 +20,13 @@ export const listByUser = async (userId: string): Promise<Document[]> => {
   return documents.map(toDocumentType);
 };
 
-export const getById = async (userId: string, id: string): Promise<DocumentWithLinks | null> => {
+export const getById = async (
+  userId: number,
+  publicId: string,
+): Promise<DocumentWithLinks | null> => {
   const document = await prisma.document.findFirst({
-    where: { id, userId },
-    include: { links: true, reminders: true },
+    where: { publicId, userId },
+    include: documentInclude,
   });
   if (!document) return null;
   return {
@@ -31,7 +36,7 @@ export const getById = async (userId: string, id: string): Promise<DocumentWithL
   };
 };
 
-export const create = async (userId: string, data: CreateDocumentData): Promise<Document> => {
+export const create = async (userId: number, data: CreateDocumentData): Promise<Document> => {
   const created = await prisma.document.create({
     data: {
       userId,
@@ -50,12 +55,12 @@ export const create = async (userId: string, data: CreateDocumentData): Promise<
 };
 
 export const update = async (
-  userId: string,
-  id: string,
+  userId: number,
+  publicId: string,
   data: Partial<CreateDocumentData>,
 ): Promise<boolean> => {
   const result = await prisma.document.updateMany({
-    where: { id, userId },
+    where: { publicId, userId },
     data: {
       name: data.name,
       description: data.description,
@@ -71,94 +76,96 @@ export const update = async (
   return result.count > 0;
 };
 
-export const archive = async (userId: string, id: string): Promise<boolean> => {
+export const archive = async (userId: number, publicId: string): Promise<boolean> => {
   const result = await prisma.document.updateMany({
-    where: { id, userId },
+    where: { publicId, userId },
     data: { archived: true },
   });
   return result.count > 0;
 };
 
-export const remove = async (userId: string, id: string): Promise<boolean> => {
-  const result = await prisma.document.deleteMany({ where: { id, userId } });
+export const remove = async (userId: number, publicId: string): Promise<boolean> => {
+  const result = await prisma.document.deleteMany({ where: { publicId, userId } });
   return result.count > 0;
 };
 
 export const addLink = async (
-  userId: string,
+  userId: number,
   data: CreateDocumentLinkData,
 ): Promise<DocumentLink | null> => {
   const document = await prisma.document.findFirst({
-    where: { id: data.document_id, userId },
+    where: { publicId: data.document_id, userId },
   });
   if (!document) return null;
 
   const created = await prisma.documentLink.create({
     data: {
-      documentId: data.document_id,
+      documentId: document.id,
       userId,
       linked_entity_type: data.linked_entity_type,
-      linked_entity_id: data.linked_entity_id,
+      linked_entity_public_id: data.linked_entity_id,
     },
+    include: { document: true },
   });
   return toDocumentLinkType(created);
 };
 
-export const removeLink = async (userId: string, id: string): Promise<boolean> => {
+export const removeLink = async (userId: number, publicId: string): Promise<boolean> => {
   const result = await prisma.documentLink.deleteMany({
-    where: { id, userId },
+    where: { publicId, userId },
   });
   return result.count > 0;
 };
 
 export const createReminder = async (
-  userId: string,
+  userId: number,
   data: CreateDocumentReminderData,
 ): Promise<DocumentReminder | null> => {
   const document = await prisma.document.findFirst({
-    where: { id: data.document_id, userId },
+    where: { publicId: data.document_id, userId },
   });
   if (!document) return null;
 
   const created = await prisma.documentReminder.create({
     data: {
-      documentId: data.document_id,
+      documentId: document.id,
       userId,
       reminder_type: data.reminder_type,
       reminder_date: new Date(data.reminder_date),
       title: data.title,
       description: data.description,
     },
+    include: { document: true },
   });
   return toDocumentReminderType(created);
 };
 
 export const updateReminder = async (
-  userId: string,
-  id: string,
+  userId: number,
+  publicId: string,
   data: Partial<CreateDocumentReminderData & { completed?: boolean }>,
 ): Promise<boolean> => {
   const result = await prisma.documentReminder.updateMany({
-    where: { id, userId },
+    where: { publicId, userId },
     data: {
       reminder_type: data.reminder_type,
       reminder_date: data.reminder_date ? new Date(data.reminder_date) : undefined,
       title: data.title,
       description: data.description,
-      completed: (data as any).completed,
+      completed: data.completed,
     },
   });
   return result.count > 0;
 };
 
-export const removeReminder = async (userId: string, id: string): Promise<boolean> => {
+export const removeReminder = async (userId: number, publicId: string): Promise<boolean> => {
   const result = await prisma.documentReminder.deleteMany({
-    where: { id, userId },
+    where: { publicId, userId },
   });
   return result.count > 0;
 };
 
-export const listUpcomingReminders = async (userId: string): Promise<DocumentReminder[]> => {
+export const listUpcomingReminders = async (userId: number): Promise<DocumentReminder[]> => {
   const today = new Date().toISOString().slice(0, 10);
   const reminders = await prisma.documentReminder.findMany({
     where: {
@@ -168,18 +175,24 @@ export const listUpcomingReminders = async (userId: string): Promise<DocumentRem
     },
     orderBy: { reminder_date: 'asc' },
     take: 50,
+    include: { document: true },
   });
   return reminders.map(toDocumentReminderType);
 };
 
 export const listByLinkedEntity = async (
-  userId: string,
-  linkedEntityId: string,
+  userId: number,
+  entityType: string,
+  entityPublicId: string,
 ): Promise<DocumentWithLinks[]> => {
   const links = await prisma.documentLink.findMany({
-    where: { userId, linked_entity_id: linkedEntityId },
+    where: {
+      userId,
+      linked_entity_type: entityType,
+      linked_entity_public_id: entityPublicId,
+    },
     include: {
-      document: { include: { links: true, reminders: true } },
+      document: { include: documentInclude },
     },
   });
 

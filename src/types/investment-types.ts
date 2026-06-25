@@ -1,8 +1,9 @@
+import { asPublicId } from '@/lib/public-id';
+
 export type InvestmentType = 'mutual_fund' | 'stock' | 'fd' | 'gold' | 'crypto';
 
 export interface Investment {
   id: string;
-  user_id: string;
   name: string;
   type: InvestmentType;
   invested_amount: number;
@@ -55,19 +56,31 @@ export const INVESTMENT_TYPE_LABELS: Record<InvestmentType, string> = {
   crypto: 'Cryptocurrency',
 };
 
-export const toInvestmentType = (investment: any): Investment => ({
-  id: investment.id,
-  user_id: investment.userId,
+export const toInvestmentType = (
+  investment: any,
+  accountMeta?: { id: string; name: string },
+): Investment => ({
+  id: asPublicId(investment.publicId),
   name: investment.name,
   type: investment.type,
   invested_amount: Number(investment.invested_amount),
   current_value: Number(investment.current_value),
-  account_id: investment.accountId,
+  account_id:
+    investment.account?.publicId != null
+      ? asPublicId(investment.account.publicId)
+      : accountMeta?.id ?? '',
   start_date: investment.start_date?.toISOString(),
   notes: investment.notes,
   created_at: investment.createdAt.toISOString(),
   updated_at: investment.updatedAt.toISOString(),
-  ...(investment.account
-    ? { accounts: { id: investment.account.id, name: investment.account.name } }
-    : {}),
+  ...(accountMeta
+      ? { accounts: accountMeta }
+    : investment.account
+      ? {
+          accounts: {
+            id: asPublicId(investment.account.publicId),
+            name: investment.account.name,
+          },
+        }
+      : {}),
 });

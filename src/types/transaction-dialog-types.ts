@@ -1,13 +1,13 @@
 import { z } from 'zod';
-import { uuidSchema } from '@/lib/validation/common';
+import { optionalPublicIdSchema } from '@/lib/validation/common';
 
 export const transactionDialogDefaultsSchema = z
   .object({
     mode: z.enum(['expense', 'income', 'transfer']).optional(),
-    accountId: uuidSchema.optional(),
-    fromAccountId: uuidSchema.optional(),
-    toAccountId: uuidSchema.optional(),
-    categoryId: uuidSchema.optional(),
+    accountId: optionalPublicIdSchema,
+    fromAccountId: optionalPublicIdSchema,
+    toAccountId: optionalPublicIdSchema,
+    categoryId: optionalPublicIdSchema,
     preserveAccountOnSave: z.boolean().optional(),
   })
   .strict();

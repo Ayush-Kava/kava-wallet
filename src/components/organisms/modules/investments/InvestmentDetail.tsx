@@ -71,7 +71,7 @@ export default function InvestmentDetail({ investmentId }: InvestmentDetailProps
     refetch: refetchLinkedDocuments,
   } = useQuery({
     queryKey: ['investment-documents', investmentId, user?.id],
-    queryFn: () => documentsApi.getDocumentsByLinkedEntity(user!.id, investmentId),
+    queryFn: () => documentsApi.getDocumentsByLinkedEntity('investment', investmentId),
     enabled: !!user && !!investmentId,
   });
 

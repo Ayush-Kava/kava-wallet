@@ -7,64 +7,38 @@ import type {
 import { apiFetch } from '@/lib/api-client';
 
 export const investmentsApi = {
-  // Get all investments for user
-  getInvestments: async (userId: string): Promise<Investment[]> => {
-    return apiFetch<Investment[]>(`/api/investments?userId=${encodeURIComponent(userId)}`);
+  getInvestments: async (): Promise<Investment[]> => {
+    return apiFetch<Investment[]>('/api/investments');
   },
 
-  // Get single investment with linked transactions and documents
-  getInvestment: async (userId: string, investmentId: string): Promise<InvestmentDetail> => {
-    return apiFetch<InvestmentDetail>(
-      `/api/investments/${investmentId}?userId=${encodeURIComponent(userId)}`,
-    );
+  getInvestment: async (investmentId: string): Promise<InvestmentDetail> => {
+    return apiFetch<InvestmentDetail>(`/api/investments/${investmentId}`);
   },
 
-  // Create investment
-  createInvestment: async (userId: string, payload: CreateInvestmentData): Promise<Investment> => {
-    return apiFetch<Investment>(`/api/investments`, 'POST', {
-      ...payload,
-      user_id: userId,
-    });
+  createInvestment: async (payload: CreateInvestmentData): Promise<Investment> => {
+    return apiFetch<Investment>('/api/investments', 'POST', payload);
   },
 
-  // Update investment
-  updateInvestment: async (
-    userId: string,
-    { id, ...rest }: UpdateInvestmentData,
-  ): Promise<void> => {
-    await apiFetch<void>(`/api/investments/${id}`, 'PUT', {
-      ...rest,
-      user_id: userId,
-    });
+  updateInvestment: async ({ id, ...rest }: UpdateInvestmentData): Promise<void> => {
+    await apiFetch<void>(`/api/investments/${id}`, 'PUT', rest);
   },
 
-  // Delete investment
-  deleteInvestment: async (userId: string, investmentId: string): Promise<void> => {
-    await apiFetch<void>(`/api/investments/${investmentId}`, 'DELETE', {
-      user_id: userId,
-    });
+  deleteInvestment: async (investmentId: string): Promise<void> => {
+    await apiFetch<void>(`/api/investments/${investmentId}`, 'DELETE');
   },
 
-  // Get investments by account
-  getInvestmentsByAccount: async (userId: string, accountId: string): Promise<Investment[]> => {
-    return apiFetch<Investment[]>(
-      `/api/investments/by-account/${accountId}?userId=${encodeURIComponent(userId)}`,
-    );
+  getInvestmentsByAccount: async (accountId: string): Promise<Investment[]> => {
+    const params = new URLSearchParams({ account_id: accountId });
+    return apiFetch<Investment[]>(`/api/investments/by-account?${params.toString()}`);
   },
 
-  // Get total invested amount
-  getTotalInvested: async (userId: string): Promise<number> => {
-    const result = await apiFetch<{ total: number }>(
-      `/api/investments/total-invested?userId=${encodeURIComponent(userId)}`,
-    );
+  getTotalInvested: async (): Promise<number> => {
+    const result = await apiFetch<{ total: number }>('/api/investments/total-invested');
     return result.total;
   },
 
-  // Get total current value
-  getTotalCurrentValue: async (userId: string): Promise<number> => {
-    const result = await apiFetch<{ total: number }>(
-      `/api/investments/total-current?userId=${encodeURIComponent(userId)}`,
-    );
+  getTotalCurrentValue: async (): Promise<number> => {
+    const result = await apiFetch<{ total: number }>('/api/investments/total-current');
     return result.total;
   },
 };

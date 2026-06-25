@@ -1,29 +1,26 @@
 import { NextRequest } from 'next/server';
-import { requireUser } from '@/lib/auth';
+import { authUser } from '@/lib/auth';
 import {
   successResponse,
-  errorResponse,
-  internalServerErrorResponse,
-  unauthorizedResponse,
-} from '@/lib/utils/response';
+  errorResponse } from '@/lib/utils/response';
+import { handleRouteError } from '@/lib/utils/handle-route-error';
 import { ERRORS } from '@/lib/utils/errors';
 import { create, listByUser } from '@/services/repositories/goals';
 
 export async function GET(_req: NextRequest) {
   try {
-    const user = await requireUser();
+    const user = await authUser();
     const goals = await listByUser(user.id);
     return successResponse(goals);
   } catch (error: any) {
     console.error('Goals GET error', error);
-    if (error?.message === 'Unauthorized') return unauthorizedResponse();
-    return internalServerErrorResponse();
+    return handleRouteError(error);
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await requireUser();
+    const user = await authUser();
     const body = await req.json().catch(() => ({}));
     const { name, target_amount, target_date, priority, notes, status } = body;
 
@@ -37,13 +34,11 @@ export async function POST(req: NextRequest) {
       target_date,
       priority,
       notes,
-      status,
-    });
+      status });
 
     return successResponse(goal, 201);
   } catch (error: any) {
     console.error('Goals POST error', error);
-    if (error?.message === 'Unauthorized') return unauthorizedResponse();
-    return internalServerErrorResponse();
+    return handleRouteError(error);
   }
 }

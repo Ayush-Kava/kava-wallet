@@ -1,13 +1,34 @@
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Form } from '@/components/ui/form';
 import { Loader2 } from 'lucide-react';
 import { useCategories } from '@/hooks/useCategories';
-import { CategoryFormFields } from '@/components/molecules/categories/CategoryFormFields';
 import {
-  categoryIconForMode,
-  type CategoryDisplayMode,
-} from '@/lib/category-display';
+  CategoryFormFields,
+  type CategoryFormValues,
+} from '@/components/molecules/categories/CategoryFormFields';
+import { categoryIconForMode } from '@/lib/category-display';
+
+const categoryFormSchema = z
+  .object({
+    name: z.string().min(1, 'Category name is required'),
+    displayMode: z.enum(['color', 'emoji']),
+    color: z.string(),
+    emoji: z.string(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.displayMode === 'emoji' && !data.emoji) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['emoji'],
+        message: 'Emoji is required',
+      });
+    }
+  });
 
 interface CreateCategoryDialogProps {
   open: boolean;
@@ -26,54 +47,40 @@ function CreateCategoryForm({
   onClose: () => void;
 }) {
   const { createCategory } = useCategories();
-  const [name, setName] = useState('');
-  const [displayMode, setDisplayMode] = useState<CategoryDisplayMode>('color');
-  const [color, setColor] = useState('#6366F1');
-  const [emoji, setEmoji] = useState('🛒');
-  const [isCreating, setIsCreating] = useState(false);
+  const form = useForm<CategoryFormValues>({
+    resolver: zodResolver(categoryFormSchema),
+    defaultValues: {
+      name: '',
+      displayMode: 'color',
+      color: '#6366F1',
+      emoji: '🛒',
+    },
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-
-    setIsCreating(true);
+  const handleSubmit = async (values: CategoryFormValues) => {
     try {
       const newCategory = await createCategory.mutateAsync({
-        name: name.trim(),
+        name: values.name.trim(),
         type,
-        color,
-        icon: categoryIconForMode(displayMode, emoji),
+        color: values.color,
+        icon: categoryIconForMode(values.displayMode, values.emoji),
       });
       onCategoryCreated(newCategory.id);
       onClose();
     } catch (error) {
       console.error('Failed to create category:', error);
-    } finally {
-      setIsCreating(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <CategoryFormFields
-        name={name}
-        onNameChange={setName}
-        displayMode={displayMode}
-        onDisplayModeChange={setDisplayMode}
-        color={color}
-        onColorChange={setColor}
-        emoji={emoji}
-        onEmojiChange={setEmoji}
-        disabled={isCreating}
-      />
-      <Button
-        type="submit"
-        className="w-full"
-        disabled={isCreating || !name.trim() || (displayMode === 'emoji' && !emoji)}
-      >
-        {isCreating ? <Loader2 className="animate-spin" /> : 'Create Category'}
-      </Button>
-    </form>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-5">
+        <CategoryFormFields control={form.control} disabled={createCategory.isPending} />
+        <Button type="submit" className="w-full" disabled={createCategory.isPending}>
+          {createCategory.isPending ? <Loader2 className="animate-spin" /> : 'Create Category'}
+        </Button>
+      </form>
+    </Form>
   );
 }
 

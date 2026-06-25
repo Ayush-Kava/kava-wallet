@@ -1,25 +1,29 @@
 import { NextRequest } from 'next/server';
-import { requireUser } from '@/lib/auth';
+import { authUser } from '@/lib/auth';
+import { parsePublicId } from '@/lib/public-id';
 import {
   successResponse,
-  unauthorizedResponse,
+  errorResponse,
   notFoundResponse,
-  internalServerErrorResponse,
 } from '@/lib/utils/response';
+import { handleRouteError } from '@/lib/utils/handle-route-error';
+import { ERRORS } from '@/lib/utils/errors';
 import { getById, listTransactions } from '@/services/repositories/accounts';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const user = await requireUser();
-    const account = await getById(user.id, id);
+    const publicId = parsePublicId(id);
+    if (!publicId) return errorResponse(ERRORS.GENERIC_BAD_REQUEST);
+
+    const user = await authUser();
+    const account = await getById(user.id, publicId);
     if (!account) return notFoundResponse();
 
-    const transactions = await listTransactions(user.id, id);
+    const transactions = await listTransactions(user.id, publicId);
     return successResponse(transactions);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Account transactions GET error', error);
-    if (error?.message === 'Unauthorized') return unauthorizedResponse();
-    return internalServerErrorResponse();
+    return handleRouteError(error);
   }
 }

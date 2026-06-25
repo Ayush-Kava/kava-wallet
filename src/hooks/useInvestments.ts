@@ -10,23 +10,22 @@ export const useInvestments = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const userId = user?.id || '';
 
   const getInvestments = useQuery({
     queryKey: INVESTMENTS_QUERY_KEY,
-    queryFn: () => investmentsApi.getInvestments(userId),
-    enabled: !!userId,
+    queryFn: () => investmentsApi.getInvestments(),
+    enabled: !!user,
   });
 
   const useInvestment = (investmentId: string) =>
     useQuery({
       queryKey: [...INVESTMENTS_QUERY_KEY, investmentId],
-      queryFn: () => investmentsApi.getInvestment(userId, investmentId),
-      enabled: !!userId && !!investmentId,
+      queryFn: () => investmentsApi.getInvestment(investmentId),
+      enabled: !!user && !!investmentId,
     });
 
   const createInvestmentMutation = useMutation({
-    mutationFn: (payload: CreateInvestmentData) => investmentsApi.createInvestment(userId, payload),
+    mutationFn: (payload: CreateInvestmentData) => investmentsApi.createInvestment(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: INVESTMENTS_QUERY_KEY });
       toast({ title: 'Investment created successfully!' });
@@ -41,7 +40,7 @@ export const useInvestments = () => {
   });
 
   const updateInvestmentMutation = useMutation({
-    mutationFn: (payload: UpdateInvestmentData) => investmentsApi.updateInvestment(userId, payload),
+    mutationFn: (payload: UpdateInvestmentData) => investmentsApi.updateInvestment(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: INVESTMENTS_QUERY_KEY });
       toast({ title: 'Investment updated!' });
@@ -56,7 +55,7 @@ export const useInvestments = () => {
   });
 
   const deleteInvestmentMutation = useMutation({
-    mutationFn: (investmentId: string) => investmentsApi.deleteInvestment(userId, investmentId),
+    mutationFn: (investmentId: string) => investmentsApi.deleteInvestment(investmentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: INVESTMENTS_QUERY_KEY });
       toast({ title: 'Investment deleted!' });
@@ -72,14 +71,14 @@ export const useInvestments = () => {
 
   const getTotalInvested = useQuery({
     queryKey: [...INVESTMENTS_QUERY_KEY, 'total-invested'],
-    queryFn: () => investmentsApi.getTotalInvested(userId),
-    enabled: !!userId,
+    queryFn: () => investmentsApi.getTotalInvested(),
+    enabled: !!user,
   });
 
   const getTotalCurrentValue = useQuery({
     queryKey: [...INVESTMENTS_QUERY_KEY, 'total-value'],
-    queryFn: () => investmentsApi.getTotalCurrentValue(userId),
-    enabled: !!userId,
+    queryFn: () => investmentsApi.getTotalCurrentValue(),
+    enabled: !!user,
   });
 
   return {

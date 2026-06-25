@@ -1,7 +1,8 @@
+import { asPublicId } from '@/lib/public-id';
+
 // Define types directly since tables don't exist yet in Supabase types
 export interface Document {
   id: string;
-  user_id: string;
   name: string;
   description?: string | null;
   file_url: string;
@@ -19,7 +20,6 @@ export interface Document {
 export interface DocumentLink {
   id: string;
   document_id: string;
-  user_id: string;
   linked_entity_type: string;
   linked_entity_id: string;
   created_at: string;
@@ -28,7 +28,6 @@ export interface DocumentLink {
 export interface DocumentReminder {
   id: string;
   document_id: string;
-  user_id: string;
   reminder_type: string;
   reminder_date: string;
   title: string;
@@ -89,8 +88,7 @@ export interface UpdateDocumentReminderData extends Partial<CreateDocumentRemind
 }
 
 export const toDocumentType = (doc: any): Document => ({
-  id: doc.id,
-  user_id: doc.userId,
+  id: asPublicId(doc.publicId),
   name: doc.name,
   description: doc.description,
   file_url: doc.file_url,
@@ -106,18 +104,16 @@ export const toDocumentType = (doc: any): Document => ({
 });
 
 export const toDocumentLinkType = (link: any): DocumentLink => ({
-  id: link.id,
-  document_id: link.documentId,
-  user_id: link.userId,
+  id: asPublicId(link.publicId),
+  document_id: link.document?.publicId != null ? asPublicId(link.document.publicId) : '',
   linked_entity_type: link.linked_entity_type,
-  linked_entity_id: link.linked_entity_id,
+  linked_entity_id: asPublicId(link.linked_entity_public_id),
   created_at: link.createdAt.toISOString(),
 });
 
 export const toDocumentReminderType = (reminder: any): DocumentReminder => ({
-  id: reminder.id,
-  document_id: reminder.documentId,
-  user_id: reminder.userId,
+  id: asPublicId(reminder.publicId),
+  document_id: reminder.document?.publicId != null ? asPublicId(reminder.document.publicId) : '',
   reminder_type: reminder.reminder_type,
   reminder_date: reminder.reminder_date?.toISOString().split('T')[0],
   title: reminder.title,

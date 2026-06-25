@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { amountSchema, dateSchema, uuidSchema } from './common';
+import { amountSchema, dateSchema, publicIdSchema, optionalPublicIdSchema } from './common';
 
 export const createTransactionSchema = z.object({
-  account_id: uuidSchema,
-  category_id: uuidSchema.optional().nullable(),
+  account_id: publicIdSchema,
+  category_id: publicIdSchema.optional().nullable(),
   type: z.enum(['income', 'expense']),
   amount: amountSchema,
   description: z.string().max(500).optional().nullable(),
@@ -12,8 +12,8 @@ export const createTransactionSchema = z.object({
 
 export const createTransferSchema = z
   .object({
-    from_account_id: uuidSchema,
-    to_account_id: uuidSchema,
+    from_account_id: publicIdSchema,
+    to_account_id: publicIdSchema,
     amount: amountSchema,
     description: z.string().max(500).optional().nullable(),
     date: dateSchema,
@@ -25,9 +25,9 @@ export const createTransferSchema = z
 
 export const updateTransferSchema = z
   .object({
-    transfer_id: uuidSchema,
-    from_account_id: uuidSchema,
-    to_account_id: uuidSchema,
+    transfer_id: publicIdSchema,
+    from_account_id: publicIdSchema,
+    to_account_id: publicIdSchema,
     amount: amountSchema,
     description: z.string().max(500).optional().nullable(),
     date: dateSchema,
@@ -39,8 +39,8 @@ export const updateTransferSchema = z
 
 export const transactionFiltersSchema = z.object({
   type: z.enum(['income', 'expense']).optional(),
-  accountId: uuidSchema.optional(),
-  categoryId: uuidSchema.optional(),
+  accountId: optionalPublicIdSchema,
+  categoryId: optionalPublicIdSchema,
   search: z.string().max(200).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(500).default(10),

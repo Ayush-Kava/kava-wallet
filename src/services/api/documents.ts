@@ -8,103 +8,67 @@ import type {
   CreateDocumentLinkData,
   CreateDocumentReminderData,
   UpdateDocumentReminderData,
+  LinkedEntityType,
 } from '@/types/document-types';
 import { apiFetch } from '@/lib/api-client';
 
 export const documentsApi = {
-  // Documents
-  getDocuments: async (userId: string): Promise<Document[]> => {
-    return apiFetch<Document[]>(`/api/documents?userId=${encodeURIComponent(userId)}`);
+  getDocuments: async (): Promise<Document[]> => {
+    return apiFetch<Document[]>('/api/documents');
   },
 
-  getDocument: async (userId: string, documentId: string): Promise<DocumentWithLinks> => {
-    return apiFetch<DocumentWithLinks>(
-      `/api/documents/${documentId}?userId=${encodeURIComponent(userId)}`,
-    );
+  getDocument: async (documentId: string): Promise<DocumentWithLinks> => {
+    return apiFetch<DocumentWithLinks>(`/api/documents/${documentId}`);
   },
 
-  createDocument: async (userId: string, payload: CreateDocumentData): Promise<Document> => {
-    return apiFetch<Document>(`/api/documents`, 'POST', {
-      ...payload,
-      user_id: userId,
-    });
+  createDocument: async (payload: CreateDocumentData): Promise<Document> => {
+    return apiFetch<Document>('/api/documents', 'POST', payload);
   },
 
-  updateDocument: async (userId: string, { id, ...rest }: UpdateDocumentData): Promise<void> => {
-    await apiFetch<void>(`/api/documents/${id}`, 'PUT', {
-      ...rest,
-      user_id: userId,
-    });
+  updateDocument: async ({ id, ...rest }: UpdateDocumentData): Promise<void> => {
+    await apiFetch<void>(`/api/documents/${id}`, 'PUT', rest);
   },
 
-  archiveDocument: async (userId: string, documentId: string): Promise<void> => {
-    await apiFetch<void>(`/api/documents/${documentId}/archive`, 'POST', {
-      user_id: userId,
-    });
+  archiveDocument: async (documentId: string): Promise<void> => {
+    await apiFetch<void>(`/api/documents/${documentId}/archive`, 'POST');
   },
 
-  deleteDocument: async (userId: string, documentId: string): Promise<void> => {
-    await apiFetch<void>(`/api/documents/${documentId}`, 'DELETE', {
-      user_id: userId,
-    });
+  deleteDocument: async (documentId: string): Promise<void> => {
+    await apiFetch<void>(`/api/documents/${documentId}`, 'DELETE');
   },
 
-  // Document Links
-  addDocumentLink: async (
-    userId: string,
-    payload: CreateDocumentLinkData,
-  ): Promise<DocumentLink> => {
-    return apiFetch<DocumentLink>(`/api/documents/${payload.document_id}/links`, 'POST', {
-      ...payload,
-      user_id: userId,
-    });
+  addDocumentLink: async (payload: CreateDocumentLinkData): Promise<DocumentLink> => {
+    return apiFetch<DocumentLink>(`/api/documents/${payload.document_id}/links`, 'POST', payload);
   },
 
-  removeDocumentLink: async (userId: string, linkId: string): Promise<void> => {
-    await apiFetch<void>(`/api/documents/links/${linkId}`, 'DELETE', {
-      user_id: userId,
-    });
+  removeDocumentLink: async (linkId: string): Promise<void> => {
+    await apiFetch<void>(`/api/documents/links/${linkId}`, 'DELETE');
   },
 
-  // Document Reminders
-  createReminder: async (
-    userId: string,
-    payload: CreateDocumentReminderData,
-  ): Promise<DocumentReminder> => {
-    return apiFetch<DocumentReminder>(`/api/documents/${payload.document_id}/reminders`, 'POST', {
-      ...payload,
-      user_id: userId,
-    });
+  createReminder: async (payload: CreateDocumentReminderData): Promise<DocumentReminder> => {
+    return apiFetch<DocumentReminder>(`/api/documents/${payload.document_id}/reminders`, 'POST', payload);
   },
 
-  updateReminder: async (
-    userId: string,
-    { id, ...rest }: UpdateDocumentReminderData,
-  ): Promise<void> => {
-    await apiFetch<void>(`/api/documents/reminders/${id}`, 'PUT', {
-      ...rest,
-      user_id: userId,
-    });
+  updateReminder: async ({ id, ...rest }: UpdateDocumentReminderData): Promise<void> => {
+    await apiFetch<void>(`/api/documents/reminders/${id}`, 'PUT', rest);
   },
 
-  deleteReminder: async (userId: string, reminderId: string): Promise<void> => {
-    await apiFetch<void>(`/api/documents/reminders/${reminderId}`, 'DELETE', {
-      user_id: userId,
-    });
+  deleteReminder: async (reminderId: string): Promise<void> => {
+    await apiFetch<void>(`/api/documents/reminders/${reminderId}`, 'DELETE');
   },
 
-  getUpcomingReminders: async (userId: string): Promise<DocumentReminder[]> => {
-    return apiFetch<DocumentReminder[]>(
-      `/api/documents/reminders/upcoming?userId=${encodeURIComponent(userId)}`,
-    );
+  getUpcomingReminders: async (): Promise<DocumentReminder[]> => {
+    return apiFetch<DocumentReminder[]>('/api/documents/reminders/upcoming');
   },
 
   getDocumentsByLinkedEntity: async (
-    userId: string,
-    linkedEntityId: string,
+    entityType: LinkedEntityType,
+    entityId: string,
   ): Promise<DocumentWithLinks[]> => {
-    return apiFetch<DocumentWithLinks[]>(
-      `/api/documents/by-entity/${linkedEntityId}?userId=${encodeURIComponent(userId)}`,
-    );
+    const params = new URLSearchParams({
+      entity_type: entityType,
+      entity_id: entityId,
+    });
+    return apiFetch<DocumentWithLinks[]>(`/api/documents/by-entity?${params.toString()}`);
   },
 };

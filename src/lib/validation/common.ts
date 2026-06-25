@@ -8,7 +8,12 @@ export const amountSchema = z.union([z.number(), z.string()]).transform(val => {
   return Math.round(num * 100) / 100;
 });
 
+export const idSchema = z.coerce.number().int().positive();
+export const optionalIdSchema = z.coerce.number().int().positive().optional();
+
 export const uuidSchema = z.string().uuid();
+export const publicIdSchema = uuidSchema;
+export const optionalPublicIdSchema = uuidSchema.optional();
 
 export const dateSchema = z.string().refine(val => !Number.isNaN(Date.parse(val)), {
   message: 'Invalid date',

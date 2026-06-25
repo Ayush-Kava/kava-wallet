@@ -1,5 +1,6 @@
-import { ProtectedRoute } from '@/components/molecules/common/ProtectedRoute';
 import AccountLedger from '@/components/organisms/modules/account/AccountLedger';
+import { parsePublicId } from '@/lib/public-id';
+import { notFound } from 'next/navigation';
 
 type AccountDetailPageProps = {
   params: Promise<{
@@ -8,11 +9,9 @@ type AccountDetailPageProps = {
 };
 
 export default async function AccountDetailPage({ params }: AccountDetailPageProps) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = parsePublicId(rawId);
+  if (!id) notFound();
 
-  return (
-    <ProtectedRoute>
-      <AccountLedger accountId={id} />
-    </ProtectedRoute>
-  );
+  return <AccountLedger accountId={id} />;
 }

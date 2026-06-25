@@ -8,7 +8,7 @@ export interface DocumentUploadResult {
 }
 
 export const documentUploadUtils = {
-  uploadFile: async (_userId: string, file: File): Promise<DocumentUploadResult> => {
+  uploadFile: async (_userId: number, file: File): Promise<DocumentUploadResult> => {
     const formData = new FormData();
     formData.append('file', file);
 

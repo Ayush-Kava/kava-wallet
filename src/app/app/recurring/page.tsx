@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import DashboardLayout from '@/components/organisms/layout/DashboardLayout';
-import { ProtectedRoute } from '@/components/molecules/common/ProtectedRoute';
 import { RecurringRulesTable } from '@/components/organisms/modules/recurring/RecurringRulesTable';
 import { RecurringForm } from '@/components/organisms/modules/recurring/RecurringForm';
 import { Button } from '@/components/ui/button';
@@ -164,9 +163,5 @@ function RecurringPageInner() {
 }
 
 export default function RecurringPage() {
-  return (
-    <ProtectedRoute>
-      <RecurringPageInner />
-    </ProtectedRoute>
-  );
+  return <RecurringPageInner />;
 }

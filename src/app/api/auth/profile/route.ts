@@ -1,16 +1,11 @@
-import { requireUser } from '@/lib/auth';
+import { authUser, sanitizeAuthUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { successResponse, unauthorizedResponse } from '@/lib/utils/response';
-
-const sanitizeUser = (user: { id: string; email: string; fullName: string | null }) => ({
-  id: user.id,
-  email: user.email,
-  full_name: user.fullName,
-});
+import { successResponse } from '@/lib/utils/response';
+import { handleRouteError } from '@/lib/utils/handle-route-error';
 
 export async function PUT(request: Request) {
   try {
-    const user = await requireUser();
+    const user = await authUser();
     const body = await request.json().catch(() => ({}));
     const fullName = body.full_name?.trim?.() || null;
 
@@ -19,9 +14,8 @@ export async function PUT(request: Request) {
       data: { fullName },
     });
 
-    return successResponse({ user: sanitizeUser(updated) });
-  } catch (error: any) {
-    console.error('Profile update error', error);
-    return unauthorizedResponse();
+    return successResponse({ user: sanitizeAuthUser(updated) });
+  } catch (error) {
+    return handleRouteError(error);
   }
 }

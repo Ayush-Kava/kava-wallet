@@ -1,5 +1,6 @@
-import { ProtectedRoute } from '@/components/molecules/common/ProtectedRoute';
 import CreditCardDetail from '@/components/organisms/modules/credit-cards/CreditCardDetail';
+import { parsePublicId } from '@/lib/public-id';
+import { notFound } from 'next/navigation';
 
 type CreditCardDetailPageProps = {
   params: Promise<{
@@ -8,11 +9,9 @@ type CreditCardDetailPageProps = {
 };
 
 export default async function CreditCardDetailPage({ params }: CreditCardDetailPageProps) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = parsePublicId(rawId);
+  if (!id) notFound();
 
-  return (
-    <ProtectedRoute>
-      <CreditCardDetail cardId={id} />
-    </ProtectedRoute>
-  );
+  return <CreditCardDetail cardId={id} />;
 }

@@ -1,6 +1,7 @@
+import { asNullablePublicId, asPublicId } from '@/lib/public-id';
+
 export interface Loan {
   id: string;
-  user_id: string;
   name: string;
   principal: number;
   interest_rate: number;
@@ -46,16 +47,15 @@ export interface LoanWithSchedule extends Loan {
 }
 
 export const toLoanType = (loan: any): Loan => ({
-  id: loan.id,
-  user_id: loan.userId,
+  id: asPublicId(loan.publicId),
   name: loan.name,
   principal: Number(loan.principal),
   interest_rate: Number(loan.interest_rate),
   tenure_months: loan.tenure_months,
   emi_amount: Number(loan.emi_amount),
   start_date: loan.start_date?.toISOString().split('T')[0],
-  account_id: loan.accountId,
-  category_id: loan.categoryId,
+  account_id: loan.account?.publicId != null ? asPublicId(loan.account.publicId) : '',
+  category_id: asNullablePublicId(loan.category?.publicId),
   outstanding_balance: Number(loan.outstanding_balance),
   created_at: loan.createdAt.toISOString(),
   updated_at: loan.updatedAt.toISOString(),
