@@ -1,6 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -9,30 +12,40 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { CategoryFormFields } from '@/components/molecules/categories/CategoryFormFields';
+import { Form } from '@/components/ui/form';
+import {
+  CategoryFormFields,
+  type CategoryFormValues,
+} from '@/components/molecules/categories/CategoryFormFields';
 import {
   categoryIconForMode,
   getCategoryDisplayMode,
-  type CategoryDisplayMode,
 } from '@/lib/category-display';
 import type { Category, CategoryType, CreateCategoryData } from '@/types/category-types';
 import { Loader2 } from 'lucide-react';
 
-interface CategoryFormDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  type: CategoryType;
-  mode: 'create' | 'edit';
-  initialCategory?: Category;
-  onSubmit: (data: CreateCategoryData) => Promise<void>;
-  isSubmitting?: boolean;
-}
+const categoryFormSchema = z
+  .object({
+    name: z.string().min(1, 'Category name is required'),
+    displayMode: z.enum(['color', 'emoji']),
+    color: z.string(),
+    emoji: z.string(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.displayMode === 'emoji' && !data.emoji) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['emoji'],
+        message: 'Emoji is required',
+      });
+    }
+  });
 
-function buildFormState(category?: Category) {
+function buildFormState(category?: Category): CategoryFormValues {
   if (!category) {
     return {
       name: '',
-      displayMode: 'color' as CategoryDisplayMode,
+      displayMode: 'color',
       color: '#6366F1',
       emoji: '🛒',
     };
@@ -45,6 +58,16 @@ function buildFormState(category?: Category) {
     color: category.color,
     emoji: displayMode === 'emoji' ? category.icon : '🛒',
   };
+}
+
+interface CategoryFormDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  type: CategoryType;
+  mode: 'create' | 'edit';
+  initialCategory?: Category;
+  onSubmit: (data: CreateCategoryData) => Promise<void>;
+  isSubmitting?: boolean;
 }
 
 function CategoryFormBody({
@@ -62,57 +85,45 @@ function CategoryFormBody({
   onClose: () => void;
   isSubmitting: boolean;
 }) {
-  const initial = buildFormState(initialCategory);
-  const [name, setName] = useState(initial.name);
-  const [displayMode, setDisplayMode] = useState<CategoryDisplayMode>(initial.displayMode);
-  const [color, setColor] = useState(initial.color);
-  const [emoji, setEmoji] = useState(initial.emoji);
+  const form = useForm<CategoryFormValues>({
+    resolver: zodResolver(categoryFormSchema),
+    defaultValues: buildFormState(initialCategory),
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-    if (displayMode === 'emoji' && !emoji) return;
+  useEffect(() => {
+    form.reset(buildFormState(initialCategory));
+  }, [initialCategory, form]);
 
+  const handleSubmit = async (values: CategoryFormValues) => {
     await onSubmit({
-      name: name.trim(),
+      name: values.name.trim(),
       type,
-      color,
-      icon: categoryIconForMode(displayMode, emoji),
+      color: values.color,
+      icon: categoryIconForMode(values.displayMode, values.emoji),
     });
     onClose();
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <CategoryFormFields
-        name={name}
-        onNameChange={setName}
-        displayMode={displayMode}
-        onDisplayModeChange={setDisplayMode}
-        color={color}
-        onColorChange={setColor}
-        emoji={emoji}
-        onEmojiChange={setEmoji}
-        disabled={isSubmitting}
-      />
-      <div className="flex justify-end gap-3">
-        <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          disabled={isSubmitting || !name.trim() || (displayMode === 'emoji' && !emoji)}
-        >
-          {isSubmitting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : mode === 'create' ? (
-            'Create Category'
-          ) : (
-            'Save Changes'
-          )}
-        </Button>
-      </div>
-    </form>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-5">
+        <CategoryFormFields control={form.control} disabled={isSubmitting} />
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : mode === 'create' ? (
+              'Create Category'
+            ) : (
+              'Save Changes'
+            )}
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 }
 

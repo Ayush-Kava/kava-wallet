@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -13,6 +14,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { DatePicker } from '@/components/molecules/common/DatePicker';
 import { CategorySelect } from '@/components/molecules/categories/CategorySelect';
 import { useAccounts } from '@/hooks/useAccounts';
@@ -20,11 +29,14 @@ import { useCategories } from '@/hooks/useCategories';
 import type { RecurringRule } from '@/types/recurring-types';
 import type { CreateRecurringRuleData, RecurringType } from '@/types/recurring-types';
 
-const schema = z
+const recurringFormSchema = z
   .object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
     description: z.string().optional(),
-    amount: z.number().positive('Amount must be positive'),
+    amount: z
+      .string()
+      .min(1, 'Amount is required')
+      .refine(v => !Number.isNaN(Number(v)) && Number(v) > 0, 'Amount must be positive'),
     type: z.enum(['income', 'expense', 'transfer']),
     frequency: z.enum(['weekly', 'monthly', 'yearly']),
     account_id: z.string().optional(),
@@ -62,16 +74,33 @@ const schema = z
           message: 'Accounts must be different',
         });
       }
-    } else {
-      if (!data.account_id) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['account_id'],
-          message: 'Account is required',
-        });
-      }
+    } else if (!data.account_id) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['account_id'],
+        message: 'Account is required',
+      });
     }
   });
+
+type RecurringFormValues = z.infer<typeof recurringFormSchema>;
+
+function buildDefaultValues(initialRule?: RecurringRule | null): RecurringFormValues {
+  return {
+    name: initialRule?.name || '',
+    description: initialRule?.description || '',
+    amount: initialRule ? String(initialRule.amount) : '',
+    type: (initialRule?.type || 'expense') as RecurringType,
+    frequency: initialRule?.frequency || 'monthly',
+    account_id: initialRule?.account_id ?? '',
+    from_account_id: initialRule?.from_account_id ?? '',
+    to_account_id: initialRule?.to_account_id ?? '',
+    category_id: initialRule?.category_id ?? '',
+    next_run_date: initialRule?.next_run_date || '',
+    end_date: initialRule?.end_date || '',
+    paused: initialRule?.paused || false,
+  };
+}
 
 type RecurringFormProps = {
   initialRule?: RecurringRule | null;
@@ -83,252 +112,292 @@ export function RecurringForm({ initialRule, onSubmit, isSubmitting }: Recurring
   const { accounts } = useAccounts();
   const { incomeCategories, expenseCategories } = useCategories();
 
-  const [formState, setFormState] = useState(() => ({
-    name: initialRule?.name || '',
-    description: initialRule?.description || '',
-    amount: initialRule ? String(initialRule.amount) : '',
-    type: (initialRule?.type || 'expense') as RecurringType,
-    frequency: initialRule?.frequency || 'monthly',
-    account_id: initialRule?.account_id || '',
-    from_account_id: initialRule?.from_account_id || '',
-    to_account_id: initialRule?.to_account_id || '',
-    category_id: initialRule?.category_id || '',
-    next_run_date: initialRule?.next_run_date || '',
-    end_date: initialRule?.end_date || '',
-    paused: initialRule?.paused || false,
-  }));
+  const form = useForm<RecurringFormValues>({
+    resolver: zodResolver(recurringFormSchema),
+    defaultValues: buildDefaultValues(initialRule),
+  });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  useEffect(() => {
+    form.reset(buildDefaultValues(initialRule));
+  }, [initialRule, form]);
 
-  const categories = formState.type === 'income' ? incomeCategories : expenseCategories;
+  const type = form.watch('type');
+  const fromAccountId = form.watch('from_account_id');
 
-  const handleChange = (field: keyof typeof formState, value: string | boolean) => {
-    setFormState(prev => ({ ...prev, [field]: value }));
-  };
+  const categories = useMemo(
+    () => (type === 'income' ? incomeCategories : expenseCategories),
+    [type, incomeCategories, expenseCategories],
+  );
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setErrors({});
-
-    const parsed = schema.safeParse({
-      ...formState,
-      amount: formState.amount ? parseFloat(formState.amount) : 0,
-      end_date: formState.end_date || undefined,
-    });
-
-    if (!parsed.success) {
-      const nextErrors: Record<string, string> = {};
-      parsed.error.errors.forEach(issue => {
-        if (issue.path[0]) nextErrors[issue.path[0] as string] = issue.message;
-      });
-      setErrors(nextErrors);
-      return;
-    }
-
+  const handleSubmit = async (values: RecurringFormValues) => {
     await onSubmit({
-      name: parsed.data.name,
-      description: parsed.data.description || undefined,
-      amount: parsed.data.amount,
-      type: parsed.data.type,
-      frequency: parsed.data.frequency,
-      account_id: parsed.data.type === 'transfer' ? null : parsed.data.account_id,
-      from_account_id: parsed.data.type === 'transfer' ? parsed.data.from_account_id : null,
-      to_account_id: parsed.data.type === 'transfer' ? parsed.data.to_account_id : null,
-      category_id: parsed.data.type === 'transfer' ? null : parsed.data.category_id || null,
-      next_run_date: parsed.data.next_run_date,
-      end_date: parsed.data.end_date || undefined,
-      paused: parsed.data.paused,
+      name: values.name,
+      description: values.description || undefined,
+      amount: Number(values.amount),
+      type: values.type,
+      frequency: values.frequency,
+      account_id:
+        values.type === 'transfer' || !values.account_id ? null : values.account_id,
+      from_account_id:
+        values.type === 'transfer' && values.from_account_id ? values.from_account_id : null,
+      to_account_id:
+        values.type === 'transfer' && values.to_account_id ? values.to_account_id : null,
+      category_id:
+        values.type === 'transfer' || !values.category_id ? null : values.category_id,
+      next_run_date: values.next_run_date,
+      end_date: values.end_date || undefined,
+      paused: values.paused,
     });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label>Name *</Label>
-        <Input
-          value={formState.name}
-          onChange={e => handleChange('name', e.target.value)}
-          placeholder="Salary, Rent, Netflix"
-        />
-        {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
-      </div>
-
-      <div className="space-y-2">
-        <Label>Description</Label>
-        <Input
-          value={formState.description}
-          onChange={e => handleChange('description', e.target.value)}
-          placeholder="Optional note"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Amount *</Label>
-          <Input
-            type="number"
-            value={formState.amount}
-            onChange={e => handleChange('amount', e.target.value)}
-            step="0.01"
-            min="0"
-          />
-          {errors.amount && <p className="text-sm text-destructive">{errors.amount}</p>}
-        </div>
-
-        <div className="space-y-2">
-          <Label>Type *</Label>
-          <Select
-            value={formState.type}
-            onValueChange={value => handleChange('type', value as RecurringType)}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="expense">Expense</SelectItem>
-              <SelectItem value="income">Income</SelectItem>
-              <SelectItem value="transfer">Transfer</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Frequency *</Label>
-          <Select
-            value={formState.frequency}
-            onValueChange={value => handleChange('frequency', value)}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="monthly">Monthly</SelectItem>
-              <SelectItem value="weekly">Weekly</SelectItem>
-              <SelectItem value="yearly">Yearly</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Next Run Date *</Label>
-          <DatePicker
-            value={formState.next_run_date}
-            onChange={value => handleChange('next_run_date', value)}
-          />
-          {errors.next_run_date && (
-            <p className="text-sm text-destructive">{errors.next_run_date}</p>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Name *</FormLabel>
+              <FormControl>
+                <Input placeholder="Salary, Rent, Netflix" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           )}
-        </div>
-      </div>
+        />
 
-      {formState.type === 'transfer' ? (
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Input placeholder="Optional note" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>From Account *</Label>
-            <Select
-              value={formState.from_account_id}
-              onValueChange={value => handleChange('from_account_id', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select account" />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts.map(account => (
-                  <SelectItem key={account.id} value={account.id}>
-                    {account.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.from_account_id && (
-              <p className="text-sm text-destructive">{errors.from_account_id}</p>
+          <FormField
+            control={form.control}
+            name="amount"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Amount *</FormLabel>
+                <FormControl>
+                  <Input type="number" step="0.01" min="0" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
 
-          <div className="space-y-2">
-            <Label>To Account *</Label>
-            <Select
-              value={formState.to_account_id}
-              onValueChange={value => handleChange('to_account_id', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select account" />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts
-                  .filter(account => account.id !== formState.from_account_id)
-                  .map(account => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {account.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-            {errors.to_account_id && (
-              <p className="text-sm text-destructive">{errors.to_account_id}</p>
+          <FormField
+            control={form.control}
+            name="type"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Type *</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="expense">Expense</SelectItem>
+                    <SelectItem value="income">Income</SelectItem>
+                    <SelectItem value="transfer">Transfer</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
         </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Account *</Label>
-            <Select
-              value={formState.account_id}
-              onValueChange={value => handleChange('account_id', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select account" />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts.map(account => (
-                  <SelectItem key={account.id} value={account.id}>
-                    {account.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.account_id && <p className="text-sm text-destructive">{errors.account_id}</p>}
-          </div>
 
-          <div className="space-y-2">
-            <Label>Category</Label>
-            <CategorySelect
-              categories={categories}
-              value={formState.category_id}
-              onValueChange={value => handleChange('category_id', value)}
-              placeholder="Select category"
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="frequency"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Frequency *</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="next_run_date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Next Run Date *</FormLabel>
+                <FormControl>
+                  <DatePicker value={field.value} onChange={field.onChange} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        {type === 'transfer' ? (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="from_account_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>From Account *</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select account" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {accounts.map(account => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="to_account_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>To Account *</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select account" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {accounts
+                        .filter(account => account.id !== fromAccountId)
+                        .map(account => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="account_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Account *</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select account" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {accounts.map(account => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label>End Date (optional)</Label>
-          <DatePicker
-            value={formState.end_date}
-            onChange={value => handleChange('end_date', value)}
-            placeholder="No end date"
+            <FormField
+              control={form.control}
+              name="category_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <FormControl>
+                    <CategorySelect
+                      categories={categories}
+                      value={field.value ?? ''}
+                      onValueChange={field.onChange}
+                      placeholder="Select category"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="end_date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>End Date (optional)</FormLabel>
+                <FormControl>
+                  <DatePicker
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="No end date"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="paused"
+            render={({ field }) => (
+              <FormItem className="flex items-center gap-3 space-y-0 pt-6">
+                <FormControl>
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                </FormControl>
+                <FormLabel className="cursor-pointer font-normal">Pause rule</FormLabel>
+              </FormItem>
+            )}
           />
         </div>
-        <div className="flex items-center gap-3 space-y-2">
-          <Switch
-            id="paused"
-            checked={formState.paused}
-            onCheckedChange={checked => handleChange('paused', checked)}
-          />
-          <Label htmlFor="paused" className="cursor-pointer">
-            Pause rule
-          </Label>
-        </div>
-      </div>
 
-      <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? 'Saving...' : initialRule ? 'Update Rule' : 'Create Rule'}
-      </Button>
-    </form>
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {isSubmitting ? 'Saving...' : initialRule ? 'Update Rule' : 'Create Rule'}
+        </Button>
+      </form>
+    </Form>
   );
 }

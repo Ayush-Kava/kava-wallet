@@ -7,22 +7,42 @@ export class OwnershipError extends Error {
   }
 }
 
-export const assertAccountOwnership = async (userId: string, accountId: string): Promise<void> => {
+const activeAccountFilter = {
+  deletedAt: null,
+} as const;
+
+export const resolveAccountInternalId = async (
+  userId: number,
+  accountPublicId: string,
+): Promise<number | null> => {
   const account = await prisma.account.findFirst({
-    where: { id: accountId, userId },
+    where: { publicId: accountPublicId, userId, ...activeAccountFilter },
     select: { id: true },
   });
-  if (!account) throw new OwnershipError();
+  return account?.id ?? null;
+};
+
+export const assertAccountOwnership = async (
+  userId: number,
+  accountPublicId: string,
+): Promise<number> => {
+  const id = await resolveAccountInternalId(userId, accountPublicId);
+  if (!id) throw new OwnershipError();
+  return id;
 };
 
 export const assertAccountsOwnership = async (
-  userId: string,
-  accountIds: string[],
-): Promise<void> => {
-  const uniqueIds = [...new Set(accountIds.filter(Boolean))];
-  if (uniqueIds.length === 0) return;
-  const count = await prisma.account.count({
-    where: { userId, id: { in: uniqueIds } },
+  userId: number,
+  accountPublicIds: string[],
+): Promise<number[]> => {
+  const uniqueIds = [...new Set(accountPublicIds.filter(Boolean))];
+  if (uniqueIds.length === 0) return [];
+
+  const accounts = await prisma.account.findMany({
+    where: { userId, publicId: { in: uniqueIds }, ...activeAccountFilter },
+    select: { id: true, publicId: true },
   });
-  if (count !== uniqueIds.length) throw new OwnershipError();
+
+  if (accounts.length !== uniqueIds.length) throw new OwnershipError();
+  return accounts.map(a => a.id);
 };

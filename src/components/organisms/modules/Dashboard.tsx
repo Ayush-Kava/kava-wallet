@@ -67,7 +67,7 @@ const Dashboard = () => {
     return { income, expenses, netFlow };
   }, [transactions]);
 
-  const recentTransactions = transactions.slice(0, 5);
+  const recentTransactions = transactions.slice(0, 15);
 
   return (
     <DashboardLayout
@@ -141,120 +141,130 @@ const Dashboard = () => {
         </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {/* Recent Transactions */}
-          <Card className="shadow-none">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+          <Card className="flex h-80 flex-col shadow-none">
+            <CardHeader className="flex shrink-0 flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-base font-semibold">Recent Transactions</CardTitle>
               <Button variant="ghost" size="sm" asChild>
                 <Link href={ROUTES.transactions}>View All</Link>
               </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="min-h-0 flex-1 overflow-hidden">
               {recentTransactions.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground">
-                  <p>No transactions yet.</p>
-                  <Button variant="link" onClick={() => openTransactionDialog({ mode: 'expense' })}>
-                    Add your first transaction
-                  </Button>
+                <div className="flex h-full items-center justify-center text-center text-muted-foreground">
+                  <div>
+                    <p>No transactions yet.</p>
+                    <Button variant="link" onClick={() => openTransactionDialog({ mode: 'expense' })}>
+                      Add your first transaction
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {recentTransactions.map(t => (
-                    <div
-                      key={t.id}
-                      className="flex items-center justify-between rounded-lg bg-muted/50 p-3 transition-colors hover:bg-muted"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="flex h-10 w-10 items-center justify-center rounded-lg"
-                          style={{
-                            backgroundColor: `${t.categories?.color || '#6366F1'}20`,
-                          }}
-                        >
-                          {t.type === 'income' ? (
-                            <ArrowUpRight
-                              style={{
-                                color: t.categories?.color || '#10B981',
-                              }}
-                            />
-                          ) : (
-                            <ArrowDownRight
-                              style={{
-                                color: t.categories?.color || '#EF4444',
-                              }}
-                            />
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">
-                            {t.description || t.categories?.name || 'Transaction'}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(t.date), 'MMM d, yyyy')}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className={`font-semibold ${
-                          t.type === 'income' ? 'text-success' : 'text-destructive'
-                        }`}
+                <ScrollArea className="h-full pr-3">
+                  <div className="space-y-3">
+                    {recentTransactions.map(t => (
+                      <div
+                        key={t.id}
+                        className="flex items-center justify-between rounded-lg bg-muted/50 p-3 transition-colors hover:bg-muted"
                       >
-                        {t.type === 'income' ? '+' : '-'}
-                        {formatCurrency(Number(t.amount))}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="flex h-10 w-10 items-center justify-center rounded-lg"
+                            style={{
+                              backgroundColor: `${t.categories?.color || '#6366F1'}20`,
+                            }}
+                          >
+                            {t.type === 'income' ? (
+                              <ArrowUpRight
+                                style={{
+                                  color: t.categories?.color || '#10B981',
+                                }}
+                              />
+                            ) : (
+                              <ArrowDownRight
+                                style={{
+                                  color: t.categories?.color || '#EF4444',
+                                }}
+                              />
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">
+                              {t.description || t.categories?.name || 'Transaction'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {t.categories?.name && t.description
+                                ? `${t.categories.name} • ${format(new Date(t.date), 'MMM d, yyyy')}`
+                                : format(new Date(t.date), 'MMM d, yyyy')}
+                            </p>
+                          </div>
+                        </div>
+                        <span
+                          className={`font-semibold ${
+                            t.type === 'income' ? 'text-success' : 'text-destructive'
+                          }`}
+                        >
+                          {t.type === 'income' ? '+' : '-'}
+                          {formatCurrency(Number(t.amount))}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               )}
             </CardContent>
           </Card>
 
           {/* Accounts */}
-          <Card className="shadow-none">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+          <Card className="flex h-80 flex-col shadow-none">
+            <CardHeader className="flex shrink-0 flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-base font-semibold">Your Accounts</CardTitle>
               <Button variant="ghost" size="sm" asChild>
                 <Link href={ROUTES.accounts}>Manage</Link>
               </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="min-h-0 flex-1 overflow-hidden">
               {accounts.length === 0 ? (
-                <div className="py-8 text-center text-muted-foreground">
-                  <p>No accounts yet.</p>
-                  <Button variant="link" asChild>
-                    <Link href={ROUTES.accounts}>Add your first account</Link>
-                  </Button>
+                <div className="flex h-full items-center justify-center text-center text-muted-foreground">
+                  <div>
+                    <p>No accounts yet.</p>
+                    <Button variant="link" asChild>
+                      <Link href={ROUTES.accounts}>Add your first account</Link>
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {accounts.map(acc => (
-                    <div
-                      key={acc.id}
-                      className="flex items-center justify-between rounded-lg bg-muted/50 p-3 transition-colors hover:bg-muted"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="flex h-10 w-10 items-center justify-center rounded-lg"
-                          style={{ backgroundColor: `${acc.color}20` }}
-                        >
-                          <Wallet style={{ color: acc.color }} size={20} />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{acc.name}</p>
-                          <p className="text-xs capitalize text-muted-foreground">
-                            {acc.type.replace('_', ' ')}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className={`font-semibold ${
-                          Number(acc.balance) >= 0 ? 'text-foreground' : 'text-destructive'
-                        }`}
+                <ScrollArea className="h-full pr-3">
+                  <div className="space-y-3">
+                    {accounts.map(acc => (
+                      <div
+                        key={acc.id}
+                        className="flex items-center justify-between rounded-lg bg-muted/50 p-3 transition-colors hover:bg-muted"
                       >
-                        {formatCurrency(Number(acc.balance))}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="flex h-10 w-10 items-center justify-center rounded-lg"
+                            style={{ backgroundColor: `${acc.color}20` }}
+                          >
+                            <Wallet style={{ color: acc.color }} size={20} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{acc.name}</p>
+                            <p className="text-xs capitalize text-muted-foreground">
+                              {acc.type.replace('_', ' ')}
+                            </p>
+                          </div>
+                        </div>
+                        <span
+                          className={`font-semibold ${
+                            Number(acc.balance) >= 0 ? 'text-foreground' : 'text-destructive'
+                          }`}
+                        >
+                          {formatCurrency(Number(acc.balance))}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               )}
             </CardContent>
           </Card>

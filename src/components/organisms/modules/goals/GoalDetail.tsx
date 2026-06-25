@@ -108,7 +108,9 @@ export default function GoalDetail({ goalId }: GoalDetailProps) {
     e.preventDefault();
     const payload: CreateGoalFundingData = {
       goal_id: goalId,
-      ...fundingForm,
+      source_type: fundingForm.source_type,
+      source_id: fundingForm.source_id,
+      allocated_amount: fundingForm.allocated_amount,
     };
     await addFunding(payload);
     setFundingDialogOpen(false);

@@ -1,22 +1,19 @@
 import { NextRequest } from 'next/server';
-import { requireUser } from '@/lib/auth';
+import { authUser } from '@/lib/auth';
 import { uploadDocumentToR2 } from '@/lib/r2';
 import {
   inferDocumentFileType,
   resolveFileExtension,
-  resolveMimeType,
-} from '@/lib/document-file-utils';
+  resolveMimeType } from '@/lib/document-file-utils';
 import {
   successResponse,
-  errorResponse,
-  internalServerErrorResponse,
-  unauthorizedResponse,
-} from '@/lib/utils/response';
+  errorResponse } from '@/lib/utils/response';
+import { handleRouteError } from '@/lib/utils/handle-route-error';
 import { ERRORS } from '@/lib/utils/errors';
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await requireUser();
+    const user = await authUser();
     const formData = await req.formData();
     const file = formData.get('file');
 
@@ -34,27 +31,23 @@ export async function POST(req: NextRequest) {
       publicUrl,
       mime_type: mimeType,
       file_extension: fileExtension,
-      file_type: inferDocumentFileType(mimeType, fileExtension),
-    });
+      file_type: inferDocumentFileType(mimeType, fileExtension) });
   } catch (error: any) {
-    console.error('Document upload error', error);
-    if (error?.message === 'Unauthorized') return unauthorizedResponse();
     if (error?.name === 'AccessDenied' || error?.Code === 'AccessDenied') {
       return errorResponse(
         'R2 access denied. Create an API token with Object Read & Write permission for your bucket, then update R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY in .env.',
         502,
       );
     }
-    return internalServerErrorResponse();
+    return handleRouteError(error);
   }
 }
 
 export async function DELETE() {
   try {
-    await requireUser();
+    await authUser();
     return new Response(null, { status: 204 });
   } catch (error: any) {
-    if (error?.message === 'Unauthorized') return unauthorizedResponse();
-    return internalServerErrorResponse();
+    return handleRouteError(error);
   }
 }

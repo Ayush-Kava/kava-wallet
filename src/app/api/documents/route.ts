@@ -1,29 +1,26 @@
 import { NextRequest } from 'next/server';
-import { requireUser } from '@/lib/auth';
+import { authUser } from '@/lib/auth';
 import {
   successResponse,
-  errorResponse,
-  internalServerErrorResponse,
-  unauthorizedResponse,
-} from '@/lib/utils/response';
+  errorResponse } from '@/lib/utils/response';
+import { handleRouteError } from '@/lib/utils/handle-route-error';
 import { ERRORS } from '@/lib/utils/errors';
 import { create, listByUser } from '@/services/repositories/documents';
 
 export async function GET(_req: NextRequest) {
   try {
-    const user = await requireUser();
+    const user = await authUser();
     const documents = await listByUser(user.id);
     return successResponse(documents);
   } catch (error: any) {
     console.error('Documents GET error', error);
-    if (error?.message === 'Unauthorized') return unauthorizedResponse();
-    return internalServerErrorResponse();
+    return handleRouteError(error);
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await requireUser();
+    const user = await authUser();
     const body = await req.json().catch(() => ({}));
     const {
       name,
@@ -34,8 +31,7 @@ export async function POST(req: NextRequest) {
       mime_type,
       file_size,
       tags,
-      notes,
-    } = body;
+      notes } = body;
 
     if (!name || !file_url || !file_type || !file_extension || !mime_type || file_size == null) {
       return errorResponse(ERRORS.GENERIC_BAD_REQUEST);
@@ -50,13 +46,11 @@ export async function POST(req: NextRequest) {
       mime_type,
       file_size,
       tags,
-      notes,
-    });
+      notes });
 
     return successResponse(document, 201);
   } catch (error: any) {
     console.error('Documents POST error', error);
-    if (error?.message === 'Unauthorized') return unauthorizedResponse();
-    return internalServerErrorResponse();
+    return handleRouteError(error);
   }
 }

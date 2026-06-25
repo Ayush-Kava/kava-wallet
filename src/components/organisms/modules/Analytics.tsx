@@ -70,7 +70,7 @@ const Analytics = () => {
     const byCategory: Record<string, { name: string; value: number; color: string }> = {};
 
     filteredTransactions
-      .filter(t => t.type === 'expense')
+      .filter(t => t.type === 'expense' && !t.transfer_id)
       .forEach(t => {
         const name = t.categories?.name || 'Uncategorized';
         const color = t.categories?.color || '#64748B';
@@ -85,7 +85,7 @@ const Analytics = () => {
     const byCategory: Record<string, { name: string; value: number; color: string }> = {};
 
     filteredTransactions
-      .filter(t => t.type === 'income')
+      .filter(t => t.type === 'income' && !t.transfer_id)
       .forEach(t => {
         const name = t.categories?.name || 'Other Income';
         const color = t.categories?.color || '#10B981';

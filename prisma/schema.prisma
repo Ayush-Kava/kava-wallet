@@ -1,4 +1,4 @@
-// Prisma schema derived from the existing Supabase schema, now using PostgreSQL via POSTGRES_URL
+// Prisma schema for Kava Wallet — PostgreSQL via POSTGRES_URL
 // Run `npx prisma migrate dev` to generate SQL migrations and sync the database.
 
 generator client {
@@ -10,11 +10,16 @@ datasource db {
   url      = env("POSTGRES_URL")
 }
 
-enum AccountType {
-  cash
+enum UserRole {
+  user
+  admin
+}
+
+enum AccountKind {
   bank
-  credit_card
+  cash
   wallet
+  credit_card
 }
 
 enum CategoryType {
@@ -60,32 +65,37 @@ enum InvestmentType {
 }
 
 model User {
-  id           String    @id @default(uuid()) @db.Uuid
-  email        String    @unique
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
   passwordHash String
   fullName     String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  role         UserRole @default(user)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  sessions     Session[]
-  accounts     Account[]
-  categories   Category[]
-  transactions Transaction[]
-  budgets      Budget[]
-  recurring    RecurringRule[]
-  loans        Loan[]
-  goals        Goal[]
-  goalFunding  GoalFunding[]
-  investments  Investment[]
-  documents    Document[]
-  documentLinks    DocumentLink[]
+  sessions      Session[]
+  accounts      Account[]
+  bankAccounts  BankAccount[]
+  cashAccounts  CashAccount[]
+  walletAccounts WalletAccount[]
+  creditCards   CreditCard[]
+  categories    Category[]
+  transactions  Transaction[]
+  budgets       Budget[]
+  recurring     RecurringRule[]
+  loans         Loan[]
+  goals         Goal[]
+  goalFunding   GoalFunding[]
+  investments   Investment[]
+  documents     Document[]
+  documentLinks DocumentLink[]
   documentReminders DocumentReminder[]
 }
 
 model Session {
-  id        String   @id @default(uuid()) @db.Uuid
+  id        Int      @id @default(autoincrement())
   token     String   @unique
-  userId    String   @db.Uuid
+  userId    Int
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
@@ -94,42 +104,131 @@ model Session {
   @@index([token])
 }
 
-model Account {
-  id                  String    @id @default(uuid()) @db.Uuid
-  userId              String    @db.Uuid
-  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name                String
-  type                AccountType
-  balance             Decimal   @default(0) @db.Decimal(15, 2)
-  currency            String    @default("INR")
-  color               String    @default("#10B981")
-  icon                String    @default("wallet")
-  statement_start_date DateTime? @db.Date
-  statement_end_date   DateTime? @db.Date
-  due_date             DateTime? @db.Date
-  credit_limit         Decimal?  @db.Decimal(15, 2)
-  min_due              Decimal?  @db.Decimal(15, 2)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+// Admin-managed bank master
+model Bank {
+  id         Int      @id @default(autoincrement())
+  publicId   String   @unique @default(uuid()) @db.Uuid
+  name       String   @unique
+  ifscPrefix String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  transactions Transaction[]
+  bankAccounts BankAccount[]
+  creditCards  CreditCard[]
+}
+
+model BankAccount {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankId        Int
+  bank          Bank     @relation(fields: [bankId], references: [id], onDelete: Restrict)
+  name          String
+  accountNumber BigInt
+  ifscCode      String   @db.VarChar(11)
+  balance       Decimal  @default(0) @db.Decimal(15, 2)
+  currency      String   @default("INR")
+  color         String   @default("#10B981")
+  icon          String   @default("landmark")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([bankId])
+}
+
+model CashAccount {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  balance   Decimal  @default(0) @db.Decimal(15, 2)
+  currency  String   @default("INR")
+  color     String   @default("#10B981")
+  icon      String   @default("banknote")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model WalletAccount {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  provider  String?
+  balance   Decimal  @default(0) @db.Decimal(15, 2)
+  currency  String   @default("INR")
+  color     String   @default("#5F259F")
+  icon      String   @default("smartphone")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model CreditCard {
+  id                 Int       @id @default(autoincrement())
+  userId             Int
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankId             Int?
+  bank               Bank?     @relation(fields: [bankId], references: [id], onDelete: SetNull)
+  name               String
+  cardNumber         String
+  cardHolderName     String?
+  expiryDate         DateTime  @db.Date
+  creditLimit        Decimal   @db.Decimal(15, 2)
+  outstandingBalance Decimal   @default(0) @db.Decimal(15, 2)
+  minDue             Decimal?  @db.Decimal(15, 2)
+  statementStartDate DateTime? @db.Date
+  statementEndDate   DateTime? @db.Date
+  dueDate            DateTime? @db.Date
+  currency           String    @default("INR")
+  color              String    @default("#1A1F71")
+  icon               String    @default("credit-card")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([bankId])
+}
+
+// Unified ledger pointer — transactions and other modules reference this table
+model Account {
+  id          Int         @id @default(autoincrement())
+  publicId    String      @unique @default(uuid()) @db.Uuid
+  userId      Int
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind        AccountKind
+  referenceId Int
+  deletedAt   DateTime?
+
+  transactions  Transaction[]
   recurring     RecurringRule[] @relation("RecurringAccount")
   recurringFrom RecurringRule[] @relation("RecurringFrom")
   recurringTo   RecurringRule[] @relation("RecurringTo")
   loans         Loan[]
   investments   Investment[]
+
+  @@unique([kind, referenceId])
+  @@index([userId])
+  @@index([userId, publicId])
+  @@index([userId, deletedAt])
 }
 
 model Category {
-  id         String    @id @default(uuid()) @db.Uuid
-  userId     String?   @db.Uuid
-  user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         Int          @id @default(autoincrement())
+  publicId   String       @unique @default(uuid()) @db.Uuid
+  userId     Int?
+  user       User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
   name       String
   type       CategoryType
-  icon       String    @default("tag")
-  color      String    @default("#6366F1")
-  is_default Boolean   @default(false)
-  createdAt  DateTime  @default(now())
+  icon       String       @default("tag")
+  color      String       @default("#6366F1")
+  is_default Boolean      @default(false)
+  createdAt  DateTime     @default(now())
 
   transactions Transaction[]
   budgets      Budget[]
@@ -137,15 +236,17 @@ model Category {
   recurring    RecurringRule[]
 
   @@index([userId])
+  @@index([userId, publicId])
 }
 
 model Transaction {
-  id          String          @id @default(uuid()) @db.Uuid
-  userId      String          @db.Uuid
+  id          Int             @id @default(autoincrement())
+  publicId    String          @unique @default(uuid()) @db.Uuid
+  userId      Int
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accountId   String          @db.Uuid
+  accountId   Int
   account     Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  categoryId  String?         @db.Uuid
+  categoryId  Int?
   category    Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   type        TransactionType
   amount      Decimal         @db.Decimal(15, 2)
@@ -153,186 +254,203 @@ model Transaction {
   date        DateTime        @db.Date
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
-  transfer_id String?         @db.Uuid
+  transfer_id Int?
 
   @@index([userId])
+  @@index([userId, publicId])
   @@index([accountId])
   @@index([transfer_id])
 }
 
 model Budget {
-  id         String   @id @default(uuid()) @db.Uuid
-  userId     String   @db.Uuid
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  categoryId String?  @db.Uuid
+  id         Int       @id @default(autoincrement())
+  publicId   String    @unique @default(uuid()) @db.Uuid
+  userId     Int
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId Int?
   category   Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  amount     Decimal  @db.Decimal(15, 2)
+  amount     Decimal   @db.Decimal(15, 2)
   period     String
-  start_date DateTime @db.Date
+  start_date DateTime  @db.Date
   end_date   DateTime? @db.Date
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@index([userId])
+  @@index([userId, publicId])
   @@index([categoryId])
 }
 
 model RecurringRule {
-  id             String            @id @default(uuid()) @db.Uuid
-  userId         String            @db.Uuid
-  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name           String
-  description    String?
-  type           RecurringType
-  frequency      RecurringFrequency
-  amount         Decimal           @db.Decimal(15, 2)
-  accountId      String?           @db.Uuid
-  account        Account?          @relation("RecurringAccount", fields: [accountId], references: [id], onDelete: Cascade)
-  fromAccountId  String?           @db.Uuid
-  fromAccount    Account?          @relation("RecurringFrom", fields: [fromAccountId], references: [id], onDelete: Cascade)
-  toAccountId    String?           @db.Uuid
-  toAccount      Account?          @relation("RecurringTo", fields: [toAccountId], references: [id], onDelete: Cascade)
-  categoryId     String?           @db.Uuid
-  category       Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  loanId         String?           @db.Uuid
-  loan           Loan?             @relation(fields: [loanId], references: [id], onDelete: Cascade)
-  next_run_date  DateTime          @db.Date
-  end_date       DateTime?         @db.Date
-  paused         Boolean           @default(false)
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id            Int                @id @default(autoincrement())
+  publicId      String             @unique @default(uuid()) @db.Uuid
+  userId        Int
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  type          RecurringType
+  frequency     RecurringFrequency
+  amount        Decimal            @db.Decimal(15, 2)
+  accountId     Int?
+  account       Account?           @relation("RecurringAccount", fields: [accountId], references: [id], onDelete: Cascade)
+  fromAccountId Int?
+  fromAccount   Account?           @relation("RecurringFrom", fields: [fromAccountId], references: [id], onDelete: Cascade)
+  toAccountId   Int?
+  toAccount     Account?           @relation("RecurringTo", fields: [toAccountId], references: [id], onDelete: Cascade)
+  categoryId    Int?
+  category      Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  loanId        Int?
+  loan          Loan?              @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  next_run_date DateTime           @db.Date
+  end_date      DateTime?          @db.Date
+  paused        Boolean            @default(false)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 
   @@index([userId])
+  @@index([userId, publicId])
   @@index([next_run_date])
   @@index([loanId])
 }
 
 model Loan {
-  id                 String    @id @default(uuid()) @db.Uuid
-  userId             String    @db.Uuid
-  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name               String
-  principal          Decimal   @db.Decimal(12, 2)
-  interest_rate      Decimal   @db.Decimal(5, 2)
-  tenure_months      Int
-  emi_amount         Decimal   @db.Decimal(12, 2)
-  start_date         DateTime  @db.Date
-  accountId          String    @db.Uuid
-  account            Account   @relation(fields: [accountId], references: [id], onDelete: Restrict)
-  categoryId         String?   @db.Uuid
-  category           Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  outstanding_balance Decimal  @db.Decimal(12, 2) @default(0)
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  id                  Int       @id @default(autoincrement())
+  publicId            String    @unique @default(uuid()) @db.Uuid
+  userId              Int
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                String
+  principal           Decimal   @db.Decimal(12, 2)
+  interest_rate       Decimal   @db.Decimal(5, 2)
+  tenure_months       Int
+  emi_amount          Decimal   @db.Decimal(12, 2)
+  start_date          DateTime  @db.Date
+  accountId           Int
+  account             Account   @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  categoryId          Int?
+  category            Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  outstanding_balance Decimal   @default(0) @db.Decimal(12, 2)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   recurringRules RecurringRule[]
 
   @@index([userId])
+  @@index([userId, publicId])
   @@index([accountId])
   @@index([categoryId])
 }
 
 model Goal {
-  id             String        @id @default(uuid()) @db.Uuid
-  userId         String        @db.Uuid
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name           String
-  target_amount  Decimal       @db.Decimal(15, 2)
-  target_date    DateTime      @db.Date
-  priority       GoalPriority  @default(medium)
-  status         GoalStatus    @default(active)
-  notes          String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id            Int          @id @default(autoincrement())
+  publicId      String       @unique @default(uuid()) @db.Uuid
+  userId        Int
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  target_amount Decimal      @db.Decimal(15, 2)
+  target_date   DateTime     @db.Date
+  priority      GoalPriority @default(medium)
+  status        GoalStatus   @default(active)
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   funding GoalFunding[]
 
   @@index([userId])
+  @@index([userId, publicId])
   @@index([status])
   @@index([priority])
   @@index([target_date])
 }
 
 model GoalFunding {
-  id              String   @id @default(uuid()) @db.Uuid
-  goalId          String   @db.Uuid
-  goal            Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
-  userId          String   @db.Uuid
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  source_type     String
-  source_id       String   @db.Uuid
-  allocated_amount Decimal @db.Decimal(15, 2)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                  Int      @id @default(autoincrement())
+  publicId            String   @unique @default(uuid()) @db.Uuid
+  goalId              Int
+  goal                Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  userId              Int
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source_type         String
+  source_public_id    String   @db.Uuid
+  allocated_amount    Decimal  @db.Decimal(15, 2)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  @@unique([goalId, source_type, source_id])
+  @@unique([goalId, source_type, source_public_id])
   @@index([userId])
+  @@index([userId, publicId])
 }
 
 model Investment {
-  id              String        @id @default(uuid()) @db.Uuid
-  userId          String        @db.Uuid
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              Int            @id @default(autoincrement())
+  publicId        String         @unique @default(uuid()) @db.Uuid
+  userId          Int
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   name            String
   type            InvestmentType
-  invested_amount Decimal       @db.Decimal(15, 2)
-  current_value   Decimal       @db.Decimal(15, 2)
-  accountId       String        @db.Uuid
-  account         Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  start_date      DateTime      @db.Timestamptz(6)
+  invested_amount Decimal        @db.Decimal(15, 2)
+  current_value   Decimal        @db.Decimal(15, 2)
+  accountId       Int
+  account         Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  start_date      DateTime       @db.Timestamptz(6)
   notes           String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   @@index([userId])
+  @@index([userId, publicId])
   @@index([accountId])
   @@index([type])
 }
 
 model Document {
-  id          String   @id @default(uuid()) @db.Uuid
-  userId      String   @db.Uuid
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  description String?
-  file_url        String
-  file_type       String
-  file_extension  String   @default("")
-  mime_type       String   @default("application/octet-stream")
-  file_size       Int
-  tags        String[] @default([])
-  notes       String?
-  archived    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             Int      @id @default(autoincrement())
+  publicId       String   @unique @default(uuid()) @db.Uuid
+  userId         Int
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  file_url       String
+  file_type      String
+  file_extension String   @default("")
+  mime_type      String   @default("application/octet-stream")
+  file_size      Int
+  tags           String[] @default([])
+  notes          String?
+  archived       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  links      DocumentLink[]
-  reminders  DocumentReminder[]
+  links     DocumentLink[]
+  reminders DocumentReminder[]
 
   @@index([userId])
+  @@index([userId, publicId])
   @@index([archived])
 }
 
 model DocumentLink {
-  id                String   @id @default(uuid()) @db.Uuid
-  documentId        String   @db.Uuid
-  document          Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  userId            String   @db.Uuid
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  linked_entity_type String
-  linked_entity_id   String   @db.Uuid
-  createdAt         DateTime @default(now())
+  id                      Int      @id @default(autoincrement())
+  publicId                String   @unique @default(uuid()) @db.Uuid
+  documentId              Int
+  document                Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId                  Int
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  linked_entity_type      String
+  linked_entity_public_id String   @db.Uuid
+  createdAt               DateTime @default(now())
 
   @@index([documentId])
   @@index([userId])
-  @@index([linked_entity_type, linked_entity_id])
+  @@index([linked_entity_type, linked_entity_public_id])
 }
 
 model DocumentReminder {
-  id            String   @id @default(uuid()) @db.Uuid
-  documentId    String   @db.Uuid
+  id            Int      @id @default(autoincrement())
+  publicId      String   @unique @default(uuid()) @db.Uuid
+  documentId    Int
   document      Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  userId        String   @db.Uuid
+  userId        Int
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   reminder_type String
   reminder_date DateTime @db.Date
@@ -344,5 +462,6 @@ model DocumentReminder {
 
   @@index([documentId])
   @@index([userId])
+  @@index([userId, publicId])
   @@index([reminder_date])
 }

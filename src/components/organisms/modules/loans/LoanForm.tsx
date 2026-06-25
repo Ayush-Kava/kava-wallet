@@ -83,7 +83,9 @@ export const LoanForm = ({ onSubmit, isLoading = false, embedded = false }: Loan
   });
 
   const selectedCategoryId = form.watch('category_id');
-  const selectedCategory = expenseCategories.find(cat => cat.id === selectedCategoryId);
+  const selectedCategory = expenseCategories.find(
+    cat => cat.id === selectedCategoryId,
+  );
   const principal = Number(form.watch('principal') || 0);
   const interestRate = Number(form.watch('interest_rate') || 0);
   const tenureMonths = Number(form.watch('tenure_months') || 0);
@@ -116,7 +118,7 @@ export const LoanForm = ({ onSubmit, isLoading = false, embedded = false }: Loan
       emi_amount: emi,
       start_date: data.start_date,
       account_id: data.account_id,
-      category_id: data.category_id,
+      category_id: data.category_id || null,
     };
     await onSubmit(payload);
   };

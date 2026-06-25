@@ -15,6 +15,11 @@ export const ERRORS: Record<string, AppError> = {
     message: 'Authentication required',
     httpStatus: 401,
   },
+  AUTH_FORBIDDEN: {
+    code: 'AUTH_FORBIDDEN',
+    message: 'You do not have permission to perform this action',
+    httpStatus: 403,
+  },
   AUTH_INSUFFICIENT_CREDITS: {
     code: 'AUTH_INSUFFICIENT_CREDITS',
     message: 'Insufficient credits',

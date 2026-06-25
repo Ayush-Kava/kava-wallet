@@ -1,29 +1,26 @@
 import { NextRequest } from 'next/server';
-import { requireUser } from '@/lib/auth';
+import { authUser } from '@/lib/auth';
 import {
   successResponse,
-  errorResponse,
-  unauthorizedResponse,
-  internalServerErrorResponse,
-} from '@/lib/utils/response';
+  errorResponse } from '@/lib/utils/response';
+import { handleRouteError } from '@/lib/utils/handle-route-error';
 import { ERRORS } from '@/lib/utils/errors';
 import { create, listForUser } from '@/services/repositories/categories';
 
 export async function GET() {
   try {
-    const user = await requireUser();
+    const user = await authUser();
     const categories = await listForUser(user.id);
     return successResponse(categories);
   } catch (error: any) {
     console.error('Categories GET error', error);
-    if (error?.message === 'Unauthorized') return unauthorizedResponse();
-    return internalServerErrorResponse();
+    return handleRouteError(error);
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await requireUser();
+    const user = await authUser();
     const body = await req.json().catch(() => ({}));
     const { name, type, icon = 'tag', color = '#6366F1' } = body;
     if (!name || !type) return errorResponse(ERRORS.GENERIC_BAD_REQUEST);
@@ -32,12 +29,10 @@ export async function POST(req: NextRequest) {
       name,
       type,
       icon,
-      color,
-    });
+      color });
     return successResponse(category, 201);
   } catch (error: any) {
     console.error('Categories POST error', error);
-    if (error?.message === 'Unauthorized') return unauthorizedResponse();
-    return internalServerErrorResponse();
+    return handleRouteError(error);
   }
 }

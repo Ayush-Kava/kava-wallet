@@ -1,5 +1,3 @@
-import { randomUUID } from 'crypto';
-import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import {
   applyTransactionDelta,
@@ -11,6 +9,7 @@ import {
   assertAccountOwnership,
   assertAccountsOwnership,
 } from '@/services/repositories/accounts/ownership';
+import { getAccountSummaryByPublicIds } from '@/services/repositories/accounts';
 import type {
   CreateTransactionData,
   CreateTransferData,
@@ -19,10 +18,44 @@ import type {
   TransactionDetail,
   TransactionFilters,
 } from '@/types/transaction-types';
-import { toTransactionType, mapTransactionFilters } from '@/types/transaction-types';
+import {
+  toTransactionType,
+  mapTransactionFilters,
+  transactionInclude,
+} from '@/types/transaction-types';
+import type { Prisma } from '@prisma/client';
+
+const buildTransferPublicIdMap = async (rows: { transfer_id: number | null }[]) => {
+  const internalIds = [...new Set(rows.map(r => r.transfer_id).filter((id): id is number => id != null))];
+  if (!internalIds.length) return new Map<number, string>();
+
+  const txs = await prisma.transaction.findMany({
+    where: { id: { in: internalIds } },
+    select: { id: true, publicId: true },
+  });
+  return new Map(txs.map(tx => [tx.id, tx.publicId]));
+};
+
+const mapRows = async (
+  userId: number,
+  rows: Parameters<typeof toTransactionType>[0][],
+) => {
+  const transferMap = await buildTransferPublicIdMap(rows);
+  const labels = await getAccountSummaryByPublicIds(
+    userId,
+    rows.map(tx => tx.account?.publicId ?? '').filter(Boolean),
+  );
+  return rows.map(tx =>
+    toTransactionType(
+      tx,
+      tx.account?.publicId ? labels.get(tx.account.publicId) : undefined,
+      tx.transfer_id ? transferMap.get(tx.transfer_id) ?? null : null,
+    ),
+  );
+};
 
 export const list = async (
-  userId: string,
+  userId: number,
   page: number,
   limit: number,
   filters?: TransactionFilters,
@@ -31,14 +64,19 @@ export const list = async (
   const where: Prisma.TransactionWhereInput = {
     userId,
     ...(mapped.type ? { type: mapped.type } : {}),
-    ...(mapped.accountId ? { accountId: mapped.accountId } : {}),
-    ...(mapped.categoryId ? { categoryId: mapped.categoryId } : {}),
+    ...(mapped.accountPublicId
+      ? { account: { publicId: mapped.accountPublicId } }
+      : {}),
+    ...(mapped.categoryPublicId
+      ? { category: { publicId: mapped.categoryPublicId } }
+      : {}),
     ...(filters?.search ? { description: { contains: filters.search, mode: 'insensitive' } } : {}),
   };
 
   const [rawData, total] = await Promise.all([
     prisma.transaction.findMany({
       where,
+      include: transactionInclude,
       orderBy: { date: 'desc' },
       skip: (page - 1) * limit,
       take: limit,
@@ -47,79 +85,122 @@ export const list = async (
   ]);
 
   return {
-    data: rawData.map(toTransactionType),
+    data: await mapRows(userId, rawData),
     totalCount: total,
     totalPages: Math.ceil(total / limit) || 1,
   };
 };
 
 export const createTransaction = async (
-  userId: string,
+  userId: number,
   data: CreateTransactionData,
 ): Promise<void> => {
-  const { account_id, category_id, transfer_id, ...rest } = data;
-  await assertAccountOwnership(userId, account_id);
+  const { account_id, category_id, ...rest } = data;
+  const accountId = await assertAccountOwnership(userId, account_id);
+
+  let categoryId: number | undefined;
+  if (category_id) {
+    const category = await prisma.category.findFirst({
+      where: {
+        publicId: category_id,
+        OR: [{ userId }, { userId: null, is_default: true }],
+      },
+      select: { id: true },
+    });
+    if (!category) throw new Error('Invalid category');
+    categoryId = category.id;
+  }
 
   await prisma.$transaction(async tx => {
     await tx.transaction.create({
       data: {
         userId,
-        accountId: account_id,
-        categoryId: category_id,
-        transfer_id,
+        accountId,
+        categoryId,
         ...rest,
         date: new Date(rest.date),
       },
     });
-    await applyTransactionDelta(tx, account_id, rest.type, rest.amount);
+    await applyTransactionDelta(tx, accountId, rest.type, rest.amount);
   });
 };
 
-export const getDetail = async (userId: string, id: string): Promise<TransactionDetail | null> => {
+export const getDetail = async (
+  userId: number,
+  publicId: string,
+): Promise<TransactionDetail | null> => {
   const transaction = await prisma.transaction.findFirst({
-    where: { id, userId },
+    where: { publicId, userId },
+    include: transactionInclude,
   });
   if (!transaction) return null;
 
   const linkedTransactions = transaction.transfer_id
     ? await prisma.transaction.findMany({
         where: { transfer_id: transaction.transfer_id, userId },
+        include: transactionInclude,
         orderBy: { date: 'desc' },
       })
     : [];
 
+  const allRows = [transaction, ...linkedTransactions];
+  const mapped = await mapRows(userId, allRows);
   return {
-    transaction: toTransactionType(transaction),
-    linkedTransactions: linkedTransactions.map(toTransactionType),
+    transaction: mapped[0],
+    linkedTransactions: mapped.slice(1),
   };
 };
 
 export const updateTransaction = async (
-  userId: string,
-  id: string,
+  userId: number,
+  publicId: string,
   data: Partial<CreateTransactionData>,
 ): Promise<boolean> => {
   const existing = await prisma.transaction.findFirst({
-    where: { id, userId },
+    where: { publicId, userId },
   });
   if (!existing || existing.transfer_id) return false;
 
-  const accountId = data.account_id ?? existing.accountId;
+  const accountId = data.account_id
+    ? await assertAccountOwnership(userId, data.account_id)
+    : existing.accountId;
   const type = (data.type ?? existing.type) as 'income' | 'expense';
   const amount = data.amount ?? Number(existing.amount);
 
-  await assertAccountOwnership(userId, accountId);
-  if (data.account_id && data.account_id !== existing.accountId) {
-    await assertAccountOwnership(userId, existing.accountId);
+  if (data.account_id) {
+    const oldAccount = await prisma.account.findFirst({
+      where: { id: existing.accountId, userId },
+      select: { publicId: true },
+    });
+    if (oldAccount && data.account_id !== oldAccount.publicId) {
+      await assertAccountOwnership(userId, oldAccount.publicId);
+    }
+  }
+
+  let categoryId: number | null | undefined;
+  if (data.category_id !== undefined) {
+    if (data.category_id) {
+      const category = await prisma.category.findFirst({
+        where: {
+          publicId: data.category_id,
+          OR: [{ userId }, { userId: null, is_default: true }],
+        },
+        select: { id: true },
+      });
+      categoryId = category?.id ?? null;
+      if (data.category_id && !categoryId) throw new Error('Invalid category');
+    } else {
+      categoryId = null;
+    }
   }
 
   await prisma.$transaction(async tx => {
     await reverseTransactionDelta(tx, existing.accountId, existing.type, existing.amount);
     await tx.transaction.update({
-      where: { id },
+      where: { id: existing.id },
       data: {
-        accountId: data.account_id,
-        categoryId: data.category_id,
+        accountId: data.account_id ? accountId : undefined,
+        categoryId,
         type: data.type,
         amount: data.amount,
         description: data.description,
@@ -133,11 +214,11 @@ export const updateTransaction = async (
 };
 
 export const deleteTransaction = async (
-  userId: string,
-  id: string,
+  userId: number,
+  publicId: string,
 ): Promise<{ deletedTransfer: boolean } | null> => {
   const transaction = await prisma.transaction.findFirst({
-    where: { id, userId },
+    where: { publicId, userId },
   });
   if (!transaction) return null;
 
@@ -171,11 +252,11 @@ export const deleteTransaction = async (
 };
 
 export const duplicateTransaction = async (
-  userId: string,
-  id: string,
+  userId: number,
+  publicId: string,
 ): Promise<{ duplicatedTransfer: boolean } | null> => {
   const transaction = await prisma.transaction.findFirst({
-    where: { id, userId },
+    where: { publicId, userId },
   });
   if (!transaction) return null;
 
@@ -187,9 +268,8 @@ export const duplicateTransaction = async (
     const income = pair.find(t => t.type === 'income');
     if (!expense || !income) return null;
 
-    const newTransferId = randomUUID();
     await prisma.$transaction(async tx => {
-      await tx.transaction.create({
+      const newExpense = await tx.transaction.create({
         data: {
           userId,
           accountId: expense.accountId,
@@ -198,8 +278,12 @@ export const duplicateTransaction = async (
           amount: expense.amount,
           description: expense.description,
           date: expense.date,
-          transfer_id: newTransferId,
         },
+      });
+      const transferId = newExpense.id;
+      await tx.transaction.update({
+        where: { id: transferId },
+        data: { transfer_id: transferId },
       });
       await tx.transaction.create({
         data: {
@@ -210,7 +294,7 @@ export const duplicateTransaction = async (
           amount: income.amount,
           description: income.description,
           date: income.date,
-          transfer_id: newTransferId,
+          transfer_id: transferId,
         },
       });
       await applyTransferDeltas(tx, expense.accountId, income.accountId, expense.amount);
@@ -236,27 +320,33 @@ export const duplicateTransaction = async (
   return { duplicatedTransfer: false };
 };
 
-export const createTransfer = async (userId: string, data: CreateTransferData): Promise<void> => {
+export const createTransfer = async (userId: number, data: CreateTransferData): Promise<void> => {
   const { from_account_id, to_account_id, amount, description, date } = data;
-  await assertAccountsOwnership(userId, [from_account_id, to_account_id]);
-  const transferId = randomUUID();
+  const [fromAccountId, toAccountId] = await assertAccountsOwnership(userId, [
+    from_account_id,
+    to_account_id,
+  ]);
 
   await prisma.$transaction(async tx => {
-    await tx.transaction.create({
+    const expense = await tx.transaction.create({
       data: {
         userId,
-        accountId: from_account_id,
+        accountId: fromAccountId,
         type: 'expense',
         amount,
         description,
         date: new Date(date),
-        transfer_id: transferId,
       },
+    });
+    const transferId = expense.id;
+    await tx.transaction.update({
+      where: { id: transferId },
+      data: { transfer_id: transferId },
     });
     await tx.transaction.create({
       data: {
         userId,
-        accountId: to_account_id,
+        accountId: toAccountId,
         type: 'income',
         amount,
         description,
@@ -264,19 +354,28 @@ export const createTransfer = async (userId: string, data: CreateTransferData): 
         transfer_id: transferId,
       },
     });
-    await applyTransferDeltas(tx, from_account_id, to_account_id, amount);
+    await applyTransferDeltas(tx, fromAccountId, toAccountId, amount);
   });
 };
 
 export const updateTransfer = async (
-  userId: string,
+  userId: number,
   data: UpdateTransferData,
 ): Promise<boolean> => {
   const { transfer_id, from_account_id, to_account_id, amount, description, date } = data;
-  await assertAccountsOwnership(userId, [from_account_id, to_account_id]);
+  const [fromAccountId, toAccountId] = await assertAccountsOwnership(userId, [
+    from_account_id,
+    to_account_id,
+  ]);
+
+  const anchor = await prisma.transaction.findFirst({
+    where: { publicId: transfer_id, userId },
+    select: { transfer_id: true },
+  });
+  if (!anchor?.transfer_id) return false;
 
   const pair = await prisma.transaction.findMany({
-    where: { transfer_id, userId },
+    where: { transfer_id: anchor.transfer_id, userId },
   });
   if (pair.length === 0) return false;
 
@@ -291,7 +390,7 @@ export const updateTransfer = async (
         tx.transaction.update({
           where: { id: t.id },
           data: {
-            accountId: t.type === 'expense' ? from_account_id : to_account_id,
+            accountId: t.type === 'expense' ? fromAccountId : toAccountId,
             amount,
             description,
             date: date ? new Date(date) : t.date,
@@ -299,22 +398,36 @@ export const updateTransfer = async (
         }),
       ),
     );
-    await applyTransferDeltas(tx, from_account_id, to_account_id, amount);
+    await applyTransferDeltas(tx, fromAccountId, toAccountId, amount);
   });
 
   return true;
 };
 
 export const getTransferPairs = async (
-  userId: string,
-  transferIds?: string[],
+  userId: number,
+  transferPublicIds?: string[],
 ): Promise<PaginatedTransactionsResult['data']> => {
+  let transferInternalIds: number[] | undefined;
+  if (transferPublicIds?.length) {
+    const anchors = await prisma.transaction.findMany({
+      where: { userId, publicId: { in: transferPublicIds } },
+      select: { transfer_id: true },
+    });
+    transferInternalIds = anchors
+      .map(a => a.transfer_id)
+      .filter((id): id is number => id != null);
+  }
+
   const transfers = await prisma.transaction.findMany({
     where: {
       userId,
-      transfer_id: transferIds?.length ? { in: transferIds } : { not: null },
+      transfer_id: transferInternalIds?.length
+        ? { in: transferInternalIds }
+        : { not: null },
     },
+    include: transactionInclude,
     orderBy: { date: 'desc' },
   });
-  return transfers.map(toTransactionType);
+  return mapRows(userId, transfers);
 };

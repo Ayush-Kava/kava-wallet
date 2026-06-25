@@ -1,6 +1,7 @@
+import { asNullablePublicId, asPublicId } from '@/lib/public-id';
+
 export interface Transaction {
   id: string;
-  user_id: string;
   account_id: string;
   category_id: string | null;
   type: 'income' | 'expense';
@@ -26,7 +27,6 @@ export interface CreateTransactionData {
   amount: number;
   description?: string;
   date: string;
-  transfer_id?: string | null;
 }
 
 export interface CreateTransferData {
@@ -59,18 +59,51 @@ export interface PaginatedTransactionsResult {
   totalPages: number;
 }
 
-export const toTransactionType = (transaction: any): Transaction => ({
-  id: transaction.id,
-  user_id: transaction.userId,
-  account_id: transaction.accountId,
-  category_id: transaction.categoryId,
+export const transactionInclude = {
+  account: { select: { kind: true, publicId: true } },
+  category: { select: { name: true, icon: true, color: true, publicId: true } },
+} as const;
+
+export const toTransactionType = (
+  transaction: {
+    publicId: string;
+    accountId: number;
+    categoryId: number | null;
+    type: 'income' | 'expense';
+    amount: { toString(): string } | number;
+    description: string | null;
+    date: Date;
+    createdAt: Date;
+    updatedAt: Date;
+    transfer_id: number | null;
+    account?: { kind: string; publicId: string } | null;
+    category?: { name: string; icon: string; color: string; publicId: string } | null;
+  },
+  accountMeta?: { name: string; type: string },
+  transferPublicId?: string | null,
+): Transaction => ({
+  id: asPublicId(transaction.publicId),
+  account_id:
+    transaction.account?.publicId != null ? asPublicId(transaction.account.publicId) : '',
+  category_id: asNullablePublicId(transaction.category?.publicId),
   type: transaction.type,
   amount: Number(transaction.amount),
   description: transaction.description,
   date: transaction.date.toISOString().split('T')[0],
   created_at: transaction.createdAt.toISOString(),
   updated_at: transaction.updatedAt.toISOString(),
-  transfer_id: transaction.transfer_id,
+  transfer_id: transferPublicId != null ? asPublicId(transferPublicId) : null,
+  accounts: accountMeta
+    ?? (transaction.account
+      ? { name: 'Account', type: transaction.account.kind }
+      : undefined),
+  categories: transaction.category
+    ? {
+        name: transaction.category.name,
+        icon: transaction.category.icon,
+        color: transaction.category.color,
+      }
+    : undefined,
 });
 
 export const mapTransactionFilters = (filters?: TransactionFilters) => {
@@ -82,7 +115,7 @@ export const mapTransactionFilters = (filters?: TransactionFilters) => {
         : filters.type?.toLowerCase() === 'expense'
           ? 'expense'
           : undefined,
-    accountId: filters.accountId,
-    categoryId: filters.categoryId,
+    accountPublicId: filters.accountId,
+    categoryPublicId: filters.categoryId,
   } as const;
 };

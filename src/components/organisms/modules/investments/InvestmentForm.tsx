@@ -134,7 +134,7 @@ function InvestmentFormFields({
         <div className="space-y-2">
           <Label>Account *</Label>
           <Select
-            value={formData.account_id}
+            value={formData.account_id || ''}
             onValueChange={value =>
               setFormData(prev => ({
                 ...prev,

@@ -4,9 +4,9 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/organisms/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
-import { useAccounts } from '@/hooks/useAccounts';
+import { useAccounts, useAccountForEdit } from '@/hooks/useAccounts';
 import type { Account, CreateAccountData } from '@/types/account-types';
-import { Plus } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 import { AccountsSummary } from './AccountsSummary';
 import { AccountsGrid } from './AccountsGrid';
 import { AccountFormDialog } from './AccountFormDialog';
@@ -30,12 +30,12 @@ export default function AccountsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
 
-  const isSubmitting = isCreatingAccount || isUpdatingAccount;
-
-  const editingAccount = useMemo(
-    () => accounts.find(account => account.id === editingAccountId) || null,
-    [accounts, editingAccountId],
+  const { data: editingAccount, isLoading: isLoadingEditAccount } = useAccountForEdit(
+    editingAccountId,
+    formOpen && !!editingAccountId,
   );
+
+  const isSubmitting = isCreatingAccount || isUpdatingAccount;
 
   const positiveAccounts = useMemo(
     () => accounts.filter(account => Number(account.balance) >= 0),
@@ -87,6 +87,13 @@ export default function AccountsPage() {
     setFormOpen(true);
   };
 
+  const handleFormOpenChange = (open: boolean) => {
+    setFormOpen(open);
+    if (!open) setEditingAccountId(null);
+  };
+
+  const showEditLoader = formOpen && !!editingAccountId && isLoadingEditAccount;
+
   return (
     <DashboardLayout
       title="Accounts"
@@ -113,13 +120,19 @@ export default function AccountsPage() {
         />
       </div>
 
-      <AccountFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        onSubmit={handleSubmit}
-        editingAccount={editingAccount}
-        isSubmitting={isSubmitting}
-      />
+      {showEditLoader ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      ) : (
+        <AccountFormDialog
+          open={formOpen && !showEditLoader}
+          onOpenChange={handleFormOpenChange}
+          onSubmit={handleSubmit}
+          editingAccount={editingAccountId ? (editingAccount ?? null) : null}
+          isSubmitting={isSubmitting}
+        />
+      )}
 
       <DeleteAccountDialog
         open={deleteOpen}

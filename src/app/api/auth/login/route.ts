@@ -1,16 +1,17 @@
 import { prisma } from '@/lib/prisma';
-import { verifyPassword, createSession, invalidateAllSessions, SESSION_COOKIE } from '@/lib/auth';
+import {
+  verifyPassword,
+  createSession,
+  invalidateAllSessions,
+  SESSION_COOKIE,
+  sanitizeAuthUser,
+} from '@/lib/auth';
 import { loginSchema } from '@/lib/validation/auth';
 import { parseBody } from '@/lib/validation/common';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
-import { successResponse, errorResponse, internalServerErrorResponse } from '@/lib/utils/response';
+import { successResponse, errorResponse } from '@/lib/utils/response';
+import { handleRouteError } from '@/lib/utils/handle-route-error';
 import { ERRORS } from '@/lib/utils/errors';
-
-const sanitizeUser = (user: { id: string; email: string; fullName: string | null }) => ({
-  id: user.id,
-  email: user.email,
-  full_name: user.fullName,
-});
 
 export async function POST(request: Request) {
   try {
@@ -33,18 +34,16 @@ export async function POST(request: Request) {
 
     await invalidateAllSessions(user.id);
     const { token, expiresAt } = await createSession(user.id);
-    const response = successResponse({ user: sanitizeUser(user) });
+    const response = successResponse({ user: sanitizeAuthUser(user) });
     response.cookies.set(SESSION_COOKIE, token, {
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
       path: '/',
-      expires: expiresAt,
-    });
+      expires: expiresAt });
 
     return response;
-  } catch (error: any) {
-    console.error('Login error', error);
-    return internalServerErrorResponse();
+  } catch (error) {
+    return handleRouteError(error);
   }
 }

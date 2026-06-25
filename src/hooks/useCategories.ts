@@ -12,15 +12,13 @@ export const useCategories = () => {
 
   const { data: categories, isLoading } = useQuery({
     queryKey: ['categories', user?.id],
-    queryFn: async () => {
-      return categoriesApi.getCategories(user!.id);
-    },
+    queryFn: () => categoriesApi.getCategories(),
     enabled: !!user,
   });
 
   const createCategory = useMutation({
     mutationFn: async (newCategory: CreateCategoryData) =>
-      categoriesApi.createCategory(user!.id, newCategory),
+      categoriesApi.createCategory(newCategory),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
     },
@@ -28,7 +26,7 @@ export const useCategories = () => {
 
   const updateCategory = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateCategoryData }) =>
-      categoriesApi.updateCategory(user!.id, id, data),
+      categoriesApi.updateCategory(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       toast({ title: 'Category updated' });
@@ -43,7 +41,7 @@ export const useCategories = () => {
   });
 
   const deleteCategory = useMutation({
-    mutationFn: async (id: string) => categoriesApi.deleteCategory(user!.id, id),
+    mutationFn: async (id: string) => categoriesApi.deleteCategory(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       toast({ title: 'Category deleted' });
@@ -67,8 +65,8 @@ export const useCategories = () => {
   );
 
   const customCategories = useMemo(
-    () => categories?.filter(c => c.user_id === user?.id) ?? [],
-    [categories, user?.id],
+    () => categories?.filter(c => !c.is_default) ?? [],
+    [categories],
   );
 
   return {

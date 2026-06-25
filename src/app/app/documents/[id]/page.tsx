@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/organisms/layout/DashboardLayout';
-import { ProtectedRoute } from '@/components/molecules/common/ProtectedRoute';
 import { useDocuments } from '@/hooks/useDocuments';
 import { ReminderForm } from '@/components/organisms/modules/documents/ReminderForm';
 import { LinkDocumentDialog } from '@/components/organisms/modules/documents/LinkDocumentDialog';
@@ -27,7 +26,8 @@ import {
 import { Loader2, Trash2, Archive, Link2, Bell, ArrowLeft, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { ROUTES } from '@/lib/constants/routes';
-import type { DocumentReminder, UpdateDocumentReminderData, CreateDocumentReminderData } from '@/types/document-types';
+import type { DocumentReminder, UpdateDocumentReminderData, CreateDocumentReminderData, LinkedEntityType } from '@/types/document-types';
+import { parsePublicId } from '@/lib/public-id';
 import { cn } from '@/lib/utils';
 
 function DocumentDetailInner({ documentId }: { documentId: string }) {
@@ -93,7 +93,7 @@ function DocumentDetailInner({ documentId }: { documentId: string }) {
     router.push(ROUTES.documents);
   };
 
-  const handleAddLink = async (entityType: any, entityId: string) => {
+  const handleAddLink = async (entityType: LinkedEntityType, entityId: string) => {
     await addDocumentLink.mutateAsync({
       document_id: documentId,
       linked_entity_type: entityType,
@@ -433,7 +433,7 @@ function DocumentDetailInner({ documentId }: { documentId: string }) {
 
 function DocumentDetailPage() {
   const params = useParams();
-  const documentId = params?.id as string;
+  const documentId = parsePublicId(String(params?.id ?? ''));
 
   if (!documentId) {
     return (
@@ -461,9 +461,5 @@ function DocumentDetailPage() {
 }
 
 export default function DocumentPage() {
-  return (
-    <ProtectedRoute>
-      <DocumentDetailPage />
-    </ProtectedRoute>
-  );
+  return <DocumentDetailPage />;
 }

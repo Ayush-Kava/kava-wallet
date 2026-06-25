@@ -8,30 +8,29 @@ const LOANS_QUERY_KEY = ['loans'];
 export const useLoans = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const userId = user?.id || '';
 
   const getLoans = useQuery({
     queryKey: LOANS_QUERY_KEY,
-    queryFn: () => loansApi.getLoans(userId),
-    enabled: !!userId,
+    queryFn: () => loansApi.getLoans(),
+    enabled: !!user,
   });
 
   const useLoan = (loanId: string) =>
     useQuery({
       queryKey: [...LOANS_QUERY_KEY, loanId],
-      queryFn: () => loansApi.getLoan(userId, loanId),
-      enabled: !!userId && !!loanId,
+      queryFn: () => loansApi.getLoan(loanId),
+      enabled: !!user && !!loanId,
     });
 
   const createLoan = useMutation({
-    mutationFn: (payload: CreateLoanData) => loansApi.createLoan(userId, payload),
+    mutationFn: (payload: CreateLoanData) => loansApi.createLoan(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: LOANS_QUERY_KEY });
     },
   });
 
   const updateLoan = useMutation({
-    mutationFn: (payload: UpdateLoanData) => loansApi.updateLoan(userId, payload),
+    mutationFn: (payload: UpdateLoanData) => loansApi.updateLoan(payload),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: LOANS_QUERY_KEY });
       queryClient.invalidateQueries({
@@ -41,7 +40,7 @@ export const useLoans = () => {
   });
 
   const deleteLoan = useMutation({
-    mutationFn: (loanId: string) => loansApi.deleteLoan(userId, loanId),
+    mutationFn: (loanId: string) => loansApi.deleteLoan(loanId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: LOANS_QUERY_KEY });
     },
@@ -50,7 +49,7 @@ export const useLoans = () => {
   const getEMISchedule = (loan: Loan) => loansApi.getEMISchedule(loan);
 
   const calculateOutstandingBalance = async (loanId: string) => {
-    return loansApi.calculateOutstandingBalance(userId, loanId);
+    return loansApi.calculateOutstandingBalance(loanId);
   };
 
   return {

@@ -1,49 +1,81 @@
 import { prisma } from '@/lib/prisma';
+import { asPublicId } from '@/lib/public-id';
 import { assertAccountOwnership } from '@/services/repositories/accounts/ownership';
+import { getAccountSummaryByPublicIds } from '@/services/repositories/accounts';
 import type { Investment, InvestmentDetail, CreateInvestmentData } from '@/types/investment-types';
 import { toInvestmentType } from '@/types/investment-types';
 
-export const listByUser = async (userId: string): Promise<Investment[]> => {
-  const investments = await prisma.investment.findMany({
-    where: { userId },
-    include: { account: true },
-    orderBy: { createdAt: 'desc' },
+const investmentInclude = { account: true } as const;
+
+type InvestmentRow = Awaited<
+  ReturnType<typeof prisma.investment.findMany<{ include: typeof investmentInclude }>>
+>[number];
+
+const mapInvestments = async (userId: number, investments: InvestmentRow[]) => {
+  const labels = await getAccountSummaryByPublicIds(
+    userId,
+    investments.map(inv => inv.account.publicId),
+  );
+  return investments.map(inv => {
+    const meta = labels.get(inv.account.publicId);
+    return toInvestmentType(
+      inv,
+      meta ? { id: asPublicId(inv.account.publicId), name: meta.name } : undefined,
+    );
   });
-  return investments.map(toInvestmentType);
 };
 
-export const getById = async (userId: string, id: string): Promise<InvestmentDetail | null> => {
+export const listByUser = async (userId: number): Promise<Investment[]> => {
+  const investments = await prisma.investment.findMany({
+    where: { userId },
+    include: investmentInclude,
+    orderBy: { createdAt: 'desc' },
+  });
+  return mapInvestments(userId, investments);
+};
+
+export const getById = async (
+  userId: number,
+  publicId: string,
+): Promise<InvestmentDetail | null> => {
   const investment = await prisma.investment.findFirst({
-    where: { id, userId },
-    include: { account: true },
+    where: { publicId, userId },
+    include: investmentInclude,
   });
   if (!investment) return null;
 
   const links = await prisma.documentLink.findMany({
-    where: { userId, linked_entity_id: id },
+    where: { userId, linked_entity_public_id: investment.publicId },
     include: { document: true },
   });
 
+  const [mapped] = await mapInvestments(userId, [investment]);
+
   return {
-    ...toInvestmentType(investment),
+    ...mapped,
     linkedDocuments: links.map(l => ({
-      id: l.document.id,
+      id: asPublicId(l.document.publicId),
       name: l.document.name,
     })),
   };
 };
 
-export const listByAccount = async (userId: string, accountId: string): Promise<Investment[]> => {
+export const listByAccount = async (
+  userId: number,
+  accountPublicId: string,
+): Promise<Investment[]> => {
+  const accountId = await assertAccountOwnership(userId, accountPublicId);
+
   const investments = await prisma.investment.findMany({
     where: { userId, accountId },
-    include: { account: true },
+    include: investmentInclude,
     orderBy: { createdAt: 'desc' },
   });
-  return investments.map(toInvestmentType);
+  return mapInvestments(userId, investments);
 };
 
-export const create = async (userId: string, data: CreateInvestmentData): Promise<Investment> => {
-  await assertAccountOwnership(userId, data.account_id);
+export const create = async (userId: number, data: CreateInvestmentData): Promise<Investment> => {
+  const accountId = await assertAccountOwnership(userId, data.account_id);
 
   const created = await prisma.investment.create({
     data: {
@@ -52,32 +84,34 @@ export const create = async (userId: string, data: CreateInvestmentData): Promis
       type: data.type,
       invested_amount: data.invested_amount,
       current_value: data.current_value,
-      accountId: data.account_id,
+      accountId,
       start_date: new Date(data.start_date),
       notes: data.notes,
     },
-    include: { account: true },
+    include: investmentInclude,
   });
-  return toInvestmentType(created);
+  const [mapped] = await mapInvestments(userId, [created]);
+  return mapped;
 };
 
 export const update = async (
-  userId: string,
-  id: string,
+  userId: number,
+  publicId: string,
   data: Partial<CreateInvestmentData>,
 ): Promise<boolean> => {
+  let accountId: number | undefined;
   if (data.account_id) {
-    await assertAccountOwnership(userId, data.account_id);
+    accountId = await assertAccountOwnership(userId, data.account_id);
   }
 
   const result = await prisma.investment.updateMany({
-    where: { id, userId },
+    where: { publicId, userId },
     data: {
       name: data.name,
       type: data.type,
       invested_amount: data.invested_amount,
       current_value: data.current_value,
-      accountId: data.account_id,
+      accountId,
       start_date: data.start_date ? new Date(data.start_date) : undefined,
       notes: data.notes,
     },
@@ -85,12 +119,12 @@ export const update = async (
   return result.count > 0;
 };
 
-export const remove = async (userId: string, id: string): Promise<boolean> => {
-  const result = await prisma.investment.deleteMany({ where: { id, userId } });
+export const remove = async (userId: number, publicId: string): Promise<boolean> => {
+  const result = await prisma.investment.deleteMany({ where: { publicId, userId } });
   return result.count > 0;
 };
 
-export const getTotalInvested = async (userId: string): Promise<number> => {
+export const getTotalInvested = async (userId: number): Promise<number> => {
   const result = await prisma.investment.aggregate({
     where: { userId },
     _sum: { invested_amount: true },
@@ -98,7 +132,7 @@ export const getTotalInvested = async (userId: string): Promise<number> => {
   return Number(result._sum.invested_amount ?? 0);
 };
 
-export const getTotalCurrentValue = async (userId: string): Promise<number> => {
+export const getTotalCurrentValue = async (userId: number): Promise<number> => {
   const result = await prisma.investment.aggregate({
     where: { userId },
     _sum: { current_value: true },

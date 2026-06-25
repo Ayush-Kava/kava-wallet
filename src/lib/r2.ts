@@ -38,7 +38,7 @@ const getR2Client = (): S3Client =>
   });
 
 export const buildDocumentKey = (
-  userId: string,
+  userId: number | string,
   filename: string,
   mimeType = 'application/octet-stream',
 ): string => {
@@ -52,7 +52,7 @@ const buildPublicUrl = (key: string): string => {
 };
 
 export const uploadDocumentToR2 = async (
-  userId: string,
+  userId: number | string,
   filename: string,
   contentType: string,
   body: Buffer | Uint8Array,
@@ -77,7 +77,7 @@ export const uploadDocumentToR2 = async (
 };
 
 export const generatePresignedUploadUrl = async (
-  userId: string,
+  userId: number | string,
   filename: string,
   _contentType?: string,
 ): Promise<{ uploadUrl: string; publicUrl: string; key: string }> => {

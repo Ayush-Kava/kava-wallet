@@ -1,8 +1,9 @@
+import { asPublicId } from '@/lib/public-id';
+
 export type CategoryType = 'income' | 'expense';
 
 export interface Category {
   id: string;
-  user_id: string | null;
   name: string;
   type: CategoryType;
   icon: string;
@@ -25,8 +26,7 @@ export interface UpdateCategoryData {
 }
 
 export const toCategoryType = (category: any): Category => ({
-  id: category.id,
-  user_id: category.userId,
+  id: asPublicId(category.publicId),
   name: category.name,
   type: category.type,
   icon: category.icon,

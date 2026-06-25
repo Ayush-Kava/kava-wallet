@@ -10,64 +10,39 @@ import type {
 import { apiFetch } from '@/lib/api-client';
 
 export const goalsApi = {
-  // Get all goals for user
-  getGoals: async (userId: string): Promise<GoalWithFunding[]> => {
-    return apiFetch<GoalWithFunding[]>(`/api/goals?userId=${encodeURIComponent(userId)}`);
+  getGoals: async (): Promise<GoalWithFunding[]> => {
+    return apiFetch<GoalWithFunding[]>('/api/goals');
   },
 
-  // Get single goal with detailed funding info
-  getGoal: async (userId: string, goalId: string): Promise<GoalWithFunding> => {
-    return apiFetch<GoalWithFunding>(`/api/goals/${goalId}?userId=${encodeURIComponent(userId)}`);
+  getGoal: async (goalId: string): Promise<GoalWithFunding> => {
+    return apiFetch<GoalWithFunding>(`/api/goals/${goalId}`);
   },
 
-  // Create goal
-  createGoal: async (userId: string, payload: CreateGoalData): Promise<Goal> => {
-    return apiFetch<Goal>(`/api/goals`, 'POST', {
-      ...payload,
-      user_id: userId,
-    });
+  createGoal: async (payload: CreateGoalData): Promise<Goal> => {
+    return apiFetch<Goal>('/api/goals', 'POST', payload);
   },
 
-  // Update goal
-  updateGoal: async (userId: string, { id, ...rest }: UpdateGoalData): Promise<void> => {
-    await apiFetch<void>(`/api/goals/${id}`, 'PUT', {
-      ...rest,
-      user_id: userId,
-    });
+  updateGoal: async ({ id, ...rest }: UpdateGoalData): Promise<void> => {
+    await apiFetch<void>(`/api/goals/${id}`, 'PUT', rest);
   },
 
-  // Delete goal
-  deleteGoal: async (userId: string, goalId: string): Promise<void> => {
-    await apiFetch<void>(`/api/goals/${goalId}`, 'DELETE', {
-      user_id: userId,
-    });
+  deleteGoal: async (goalId: string): Promise<void> => {
+    await apiFetch<void>(`/api/goals/${goalId}`, 'DELETE');
   },
 
-  // Goal Funding Operations
-  addFunding: async (userId: string, payload: CreateGoalFundingData): Promise<GoalFunding> => {
-    return apiFetch<GoalFunding>(`/api/goals/${payload.goal_id}/funding`, 'POST', {
-      ...payload,
-      user_id: userId,
-    });
+  addFunding: async (payload: CreateGoalFundingData): Promise<GoalFunding> => {
+    return apiFetch<GoalFunding>(`/api/goals/${payload.goal_id}/funding`, 'POST', payload);
   },
 
-  updateFunding: async (userId: string, { id, ...rest }: UpdateGoalFundingData): Promise<void> => {
-    await apiFetch<void>(`/api/goals/funding/${id}`, 'PUT', {
-      ...rest,
-      user_id: userId,
-    });
+  updateFunding: async ({ id, ...rest }: UpdateGoalFundingData): Promise<void> => {
+    await apiFetch<void>(`/api/goals/funding/${id}`, 'PUT', rest);
   },
 
-  removeFunding: async (userId: string, fundingId: string): Promise<void> => {
-    await apiFetch<void>(`/api/goals/funding/${fundingId}`, 'DELETE', {
-      user_id: userId,
-    });
+  removeFunding: async (fundingId: string): Promise<void> => {
+    await apiFetch<void>(`/api/goals/funding/${fundingId}`, 'DELETE');
   },
 
-  // Get funding for a specific goal
-  getGoalFunding: async (userId: string, goalId: string): Promise<GoalFunding[]> => {
-    return apiFetch<GoalFunding[]>(
-      `/api/goals/${goalId}/funding?userId=${encodeURIComponent(userId)}`,
-    );
+  getGoalFunding: async (goalId: string): Promise<GoalFunding[]> => {
+    return apiFetch<GoalFunding[]>(`/api/goals/${goalId}/funding`);
   },
 };

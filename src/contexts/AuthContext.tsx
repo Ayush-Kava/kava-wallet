@@ -2,9 +2,10 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useToast } from '@/hooks/useToast';
 
 interface AuthUser {
-  id: string;
+  id: number;
   email: string;
   full_name?: string | null;
+  role?: string;
 }
 
 interface AuthContextType {

@@ -15,23 +15,22 @@ export const useGoals = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const userId = user?.id || '';
 
   const getGoals = useQuery({
     queryKey: GOALS_QUERY_KEY,
-    queryFn: () => goalsApi.getGoals(userId),
-    enabled: !!userId,
+    queryFn: () => goalsApi.getGoals(),
+    enabled: !!user,
   });
 
   const useGoal = (goalId: string) =>
     useQuery({
       queryKey: [...GOALS_QUERY_KEY, goalId],
-      queryFn: () => goalsApi.getGoal(userId, goalId),
-      enabled: !!userId && !!goalId,
+      queryFn: () => goalsApi.getGoal(goalId),
+      enabled: !!user && !!goalId,
     });
 
   const createGoalMutation = useMutation({
-    mutationFn: (payload: CreateGoalData) => goalsApi.createGoal(userId, payload),
+    mutationFn: (payload: CreateGoalData) => goalsApi.createGoal(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: GOALS_QUERY_KEY });
       toast({ title: 'Goal created successfully!' });
@@ -46,7 +45,7 @@ export const useGoals = () => {
   });
 
   const updateGoalMutation = useMutation({
-    mutationFn: (payload: UpdateGoalData) => goalsApi.updateGoal(userId, payload),
+    mutationFn: (payload: UpdateGoalData) => goalsApi.updateGoal(payload),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: GOALS_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: [...GOALS_QUERY_KEY, variables.id] });
@@ -62,7 +61,7 @@ export const useGoals = () => {
   });
 
   const deleteGoalMutation = useMutation({
-    mutationFn: (goalId: string) => goalsApi.deleteGoal(userId, goalId),
+    mutationFn: (goalId: string) => goalsApi.deleteGoal(goalId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: GOALS_QUERY_KEY });
       toast({ title: 'Goal deleted!' });
@@ -77,7 +76,7 @@ export const useGoals = () => {
   });
 
   const addFundingMutation = useMutation({
-    mutationFn: (payload: CreateGoalFundingData) => goalsApi.addFunding(userId, payload),
+    mutationFn: (payload: CreateGoalFundingData) => goalsApi.addFunding(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: GOALS_QUERY_KEY });
       toast({ title: 'Funding added!' });
@@ -92,7 +91,7 @@ export const useGoals = () => {
   });
 
   const updateFundingMutation = useMutation({
-    mutationFn: (payload: UpdateGoalFundingData) => goalsApi.updateFunding(userId, payload),
+    mutationFn: (payload: UpdateGoalFundingData) => goalsApi.updateFunding(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: GOALS_QUERY_KEY });
       toast({ title: 'Funding updated!' });
@@ -107,7 +106,7 @@ export const useGoals = () => {
   });
 
   const removeFundingMutation = useMutation({
-    mutationFn: (fundingId: string) => goalsApi.removeFunding(userId, fundingId),
+    mutationFn: (fundingId: string) => goalsApi.removeFunding(fundingId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: GOALS_QUERY_KEY });
       toast({ title: 'Funding removed!' });

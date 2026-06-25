@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/useToast';
+import {
+  isInsufficientBalanceMessage,
+  showInsufficientBalanceToastFromMessage,
+} from '@/lib/insufficient-balance';
 import { transactionsApi } from '@/services/api/transactions';
 import type {
   CreateTransactionData,
@@ -12,6 +16,22 @@ import type {
 
 type UseTransactionsOptions = {
   enableList?: boolean;
+};
+
+const showTransactionError = (
+  toast: ReturnType<typeof useToast>['toast'],
+  title: string,
+  error: Error,
+) => {
+  if (isInsufficientBalanceMessage(error.message)) {
+    showInsufficientBalanceToastFromMessage(toast, error.message);
+    return;
+  }
+  toast({
+    title,
+    description: error.message,
+    variant: 'destructive',
+  });
 };
 
 export const useTransactions = (
@@ -28,7 +48,7 @@ export const useTransactions = (
   const { data, isLoading } = useQuery({
     queryKey: ['transactions', user?.id, page, limit, filters],
     queryFn: async () => {
-      return transactionsApi.getTransactions(user!.id, page, limit, filters);
+      return transactionsApi.getTransactions(page, limit, filters);
     },
     enabled: !!user && enableList,
   });
@@ -40,7 +60,7 @@ export const useTransactions = (
 
   const createTransactionMutation = useMutation({
     mutationFn: async (data: CreateTransactionData) => {
-      await transactionsApi.createTransaction(user!.id, data);
+      await transactionsApi.createTransaction(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
@@ -49,17 +69,13 @@ export const useTransactions = (
       toast({ title: 'Transaction added successfully!' });
     },
     onError: (error: Error) => {
-      toast({
-        title: 'Error adding transaction',
-        description: error.message,
-        variant: 'destructive',
-      });
+      showTransactionError(toast, 'Error adding transaction', error);
     },
   });
 
   const createTransferMutation = useMutation({
     mutationFn: async (data: CreateTransferData) => {
-      await transactionsApi.createTransfer(user!.id, data);
+      await transactionsApi.createTransfer(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
@@ -68,17 +84,13 @@ export const useTransactions = (
       toast({ title: 'Transfer recorded successfully!' });
     },
     onError: (error: Error) => {
-      toast({
-        title: 'Error recording transfer',
-        description: error.message,
-        variant: 'destructive',
-      });
+      showTransactionError(toast, 'Error recording transfer', error);
     },
   });
 
   const updateTransactionMutation = useMutation({
     mutationFn: async ({ id, ...data }: Partial<CreateTransactionData> & { id: string }) => {
-      await transactionsApi.updateTransaction(user!.id, { id, ...data });
+      await transactionsApi.updateTransaction({ id, ...data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
@@ -87,17 +99,13 @@ export const useTransactions = (
       toast({ title: 'Transaction updated!' });
     },
     onError: (error: Error) => {
-      toast({
-        title: 'Error updating transaction',
-        description: error.message,
-        variant: 'destructive',
-      });
+      showTransactionError(toast, 'Error updating transaction', error);
     },
   });
 
   const updateTransferMutation = useMutation({
     mutationFn: async (data: UpdateTransferData) => {
-      await transactionsApi.updateTransfer(user!.id, data);
+      await transactionsApi.updateTransfer(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
@@ -106,17 +114,13 @@ export const useTransactions = (
       toast({ title: 'Transfer updated!' });
     },
     onError: (error: Error) => {
-      toast({
-        title: 'Error updating transfer',
-        description: error.message,
-        variant: 'destructive',
-      });
+      showTransactionError(toast, 'Error updating transfer', error);
     },
   });
 
   const deleteTransactionMutation = useMutation({
     mutationFn: async (id: string) => {
-      return transactionsApi.deleteTransaction(user!.id, id);
+      return transactionsApi.deleteTransaction(id);
     },
     onSuccess: result => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
@@ -140,7 +144,7 @@ export const useTransactions = (
 
   const duplicateTransactionMutation = useMutation({
     mutationFn: async (id: string) => {
-      return transactionsApi.duplicateTransaction(user!.id, id);
+      return transactionsApi.duplicateTransaction(id);
     },
     onSuccess: result => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
@@ -192,9 +196,8 @@ export const useTransactionById = (id?: string) => {
     queryKey,
     queryFn: async () => {
       if (!id) throw new Error('Transaction id is required');
-      const txId = id as string;
       try {
-        return transactionsApi.getTransactionDetail(user!.id, txId);
+        return transactionsApi.getTransactionDetail(id);
       } catch (err) {
         const error = err as Error;
         toast({

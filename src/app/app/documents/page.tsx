@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useDocuments } from '@/hooks/useDocuments';
-import { ProtectedRoute } from '@/components/molecules/common/ProtectedRoute';
 import DashboardLayout from '@/components/organisms/layout/DashboardLayout';
 import { DocumentCard } from '@/components/organisms/modules/documents/DocumentCard';
 import { DocumentUploadForm } from '@/components/organisms/modules/documents/DocumentUploadForm';
@@ -50,8 +49,7 @@ export default function Documents() {
   const documentToDelete = documents.find(d => d.id === deleteId);
 
   return (
-    <ProtectedRoute>
-      <DashboardLayout
+    <DashboardLayout
         title="Documents"
         description="Store and organize your important documents"
         actions={
@@ -114,6 +112,5 @@ export default function Documents() {
           </AlertDialog>
         </div>
       </DashboardLayout>
-    </ProtectedRoute>
   );
 }

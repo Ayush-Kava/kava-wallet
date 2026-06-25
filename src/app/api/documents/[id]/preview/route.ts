@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
-import { requireUser } from '@/lib/auth';
+import { authUser } from '@/lib/auth';
+import { parsePublicId } from '@/lib/public-id';
 import { detectMimeTypeFromBuffer } from '@/lib/document-file-utils';
 import {
   getDocumentPreviewMode,
@@ -11,9 +12,9 @@ import {
 import {
   errorResponse,
   notFoundResponse,
-  internalServerErrorResponse,
-  unauthorizedResponse,
 } from '@/lib/utils/response';
+import { handleRouteError } from '@/lib/utils/handle-route-error';
+import { ERRORS } from '@/lib/utils/errors';
 import { getById } from '@/services/repositories/documents';
 
 const MAX_PREVIEW_BYTES = 25 * 1024 * 1024;
@@ -21,8 +22,11 @@ const MAX_PREVIEW_BYTES = 25 * 1024 * 1024;
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const user = await requireUser();
-    const document = await getById(user.id, id);
+    const publicId = parsePublicId(id);
+    if (!publicId) return errorResponse(ERRORS.GENERIC_BAD_REQUEST);
+
+    const user = await authUser();
+    const document = await getById(user.id, publicId);
 
     if (!document) {
       return notFoundResponse();
@@ -95,11 +99,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         'Cache-Control': 'private, no-store, max-age=0',
       },
     });
-  } catch (error: unknown) {
-    console.error('Document preview error', error);
-    if (error instanceof Error && error.message === 'Unauthorized') {
-      return unauthorizedResponse();
-    }
-    return internalServerErrorResponse();
+  } catch (error) {
+    return handleRouteError(error);
   }
 }

@@ -1,11 +1,6 @@
-import { getUserFromSession } from '@/lib/auth';
-import { successResponse, internalServerErrorResponse } from '@/lib/utils/response';
-
-const sanitizeUser = (user: { id: string; email: string; fullName: string | null }) => ({
-  id: user.id,
-  email: user.email,
-  full_name: user.fullName,
-});
+import { getUserFromSession, sanitizeAuthUser } from '@/lib/auth';
+import { successResponse } from '@/lib/utils/response';
+import { handleRouteError } from '@/lib/utils/handle-route-error';
 
 export async function GET() {
   try {
@@ -14,9 +9,8 @@ export async function GET() {
       return successResponse({ user: null });
     }
 
-    return successResponse({ user: sanitizeUser(user) });
-  } catch (error: any) {
-    console.error('Auth me error', error);
-    return internalServerErrorResponse();
+    return successResponse({ user: sanitizeAuthUser(user) });
+  } catch (error) {
+    return handleRouteError(error);
   }
 }

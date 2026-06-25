@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { clearSession, SESSION_COOKIE } from '@/lib/auth';
-import { successResponse, internalServerErrorResponse } from '@/lib/utils/response';
+import { successResponse } from '@/lib/utils/response';
+import { handleRouteError } from '@/lib/utils/handle-route-error';
 
 export async function POST() {
   try {
@@ -16,12 +17,10 @@ export async function POST() {
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
       path: '/',
-      expires: new Date(0),
-    });
+      expires: new Date(0) });
 
     return response;
-  } catch (error: any) {
-    console.error('Logout error', error);
-    return internalServerErrorResponse();
+  } catch (error) {
+    return handleRouteError(error);
   }
 }

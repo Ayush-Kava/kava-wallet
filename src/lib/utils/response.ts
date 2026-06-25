@@ -34,7 +34,7 @@ export const unauthorizedResponse = (message?: string) => {
 };
 
 export const forbiddenResponse = (message?: string) => {
-  const error = message ? { ...ERRORS.AUTH_REQUIRED, message } : ERRORS.AUTH_REQUIRED;
+  const error = message ? { ...ERRORS.AUTH_FORBIDDEN, message } : ERRORS.AUTH_FORBIDDEN;
   return NextResponse.json(
     { success: false, message: error.message },
     { status: error.httpStatus },

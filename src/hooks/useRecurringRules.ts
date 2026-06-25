@@ -14,7 +14,7 @@ export const useRecurringRules = () => {
   const queryClient = useQueryClient();
   const { data: recurringRules = [], isLoading } = useQuery<RecurringRule[]>({
     queryKey: ['recurring-rules', user?.id],
-    queryFn: async () => recurringRulesApi.getRecurringRules(user!.id),
+    queryFn: () => recurringRulesApi.getRecurringRules(),
     enabled: !!user,
   });
 
@@ -26,7 +26,7 @@ export const useRecurringRules = () => {
 
   const createRule = useMutation({
     mutationFn: async (data: CreateRecurringRuleData) =>
-      recurringRulesApi.createRecurringRule(user!.id, data),
+      recurringRulesApi.createRecurringRule(data),
     onSuccess: () => {
       invalidate();
       toast({ title: 'Recurring rule created' });
@@ -42,7 +42,7 @@ export const useRecurringRules = () => {
 
   const updateRule = useMutation({
     mutationFn: async (data: UpdateRecurringRuleData) =>
-      recurringRulesApi.updateRecurringRule(user!.id, data),
+      recurringRulesApi.updateRecurringRule(data),
     onSuccess: () => {
       invalidate();
       toast({ title: 'Recurring rule updated' });
@@ -57,7 +57,7 @@ export const useRecurringRules = () => {
   });
 
   const deleteRule = useMutation({
-    mutationFn: async (id: string) => recurringRulesApi.deleteRecurringRule(user!.id, id),
+    mutationFn: async (id: string) => recurringRulesApi.deleteRecurringRule(id),
     onSuccess: () => {
       invalidate();
       toast({ title: 'Recurring rule deleted' });
@@ -73,7 +73,7 @@ export const useRecurringRules = () => {
 
   const togglePause = useMutation({
     mutationFn: async ({ id, paused }: { id: string; paused: boolean }) =>
-      recurringRulesApi.togglePause(user!.id, id, paused),
+      recurringRulesApi.togglePause(id, paused),
     onSuccess: () => {
       invalidate();
       toast({ title: 'Rule status updated' });
@@ -88,7 +88,7 @@ export const useRecurringRules = () => {
   });
 
   const processDue = useMutation({
-    mutationFn: async () => recurringRulesApi.processDueRules(user!.id),
+    mutationFn: async () => recurringRulesApi.processDueRules(),
     onSuccess: ({ created }) => {
       invalidate();
       if (created > 0) {
@@ -108,7 +108,7 @@ export const useRecurringRules = () => {
   });
 
   const runRuleNow = useMutation({
-    mutationFn: async (ruleId: string) => recurringRulesApi.runRuleNow(user!.id, ruleId),
+    mutationFn: async (ruleId: string) => recurringRulesApi.runRuleNow(ruleId),
     onSuccess: () => {
       invalidate();
       toast({ title: 'Rule executed' });

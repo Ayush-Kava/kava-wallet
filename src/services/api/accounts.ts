@@ -2,25 +2,26 @@ import { apiFetch } from '@/lib/api-client';
 import type { Account, CreateAccountData } from '@/types/account-types';
 
 export const accountsApi = {
-  getAccounts: async (userId: string): Promise<Account[]> => {
-    return apiFetch<Account[]>(`/api/accounts?userId=${encodeURIComponent(userId)}`);
+  getAccounts: async (): Promise<Account[]> => {
+    return apiFetch<Account[]>('/api/accounts');
   },
 
-  createAccount: async (userId: string, data: CreateAccountData): Promise<void> => {
-    await apiFetch<void>(`/api/accounts`, 'POST', { ...data, user_id: userId });
+  getAccount: async (id: string, reveal = false): Promise<Account | null> => {
+    const query = reveal ? '?reveal=true' : '';
+    return apiFetch<Account | null>(`/api/accounts/${id}${query}`);
+  },
+
+  createAccount: async (data: CreateAccountData): Promise<void> => {
+    await apiFetch<void>('/api/accounts', 'POST', data);
   },
 
   updateAccount: async (
-    userId: string,
     { id, ...data }: Partial<CreateAccountData> & { id: string },
   ): Promise<void> => {
-    await apiFetch<void>(`/api/accounts/${id}`, 'PUT', {
-      ...data,
-      user_id: userId,
-    });
+    await apiFetch<void>(`/api/accounts/${id}`, 'PUT', data);
   },
 
-  deleteAccount: async (userId: string, id: string): Promise<void> => {
-    await apiFetch<void>(`/api/accounts/${id}`, 'DELETE', { user_id: userId });
+  deleteAccount: async (id: string): Promise<void> => {
+    await apiFetch<void>(`/api/accounts/${id}`, 'DELETE');
   },
 };

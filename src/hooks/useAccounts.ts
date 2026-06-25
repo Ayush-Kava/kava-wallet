@@ -1,3 +1,5 @@
+'use client';
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/useToast';
@@ -13,15 +15,13 @@ export const useAccounts = () => {
 
   const { data: accounts, isLoading } = useQuery<Account[]>({
     queryKey: ['accounts', user?.id],
-    queryFn: async () => {
-      return accountsApi.getAccounts(user!.id);
-    },
+    queryFn: () => accountsApi.getAccounts(),
     enabled: !!user,
   });
 
   const createAccountMutation = useMutation({
     mutationFn: async (data: CreateAccountData) => {
-      await accountsApi.createAccount(user!.id, data);
+      await accountsApi.createAccount(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
@@ -38,7 +38,7 @@ export const useAccounts = () => {
 
   const updateAccountMutation = useMutation({
     mutationFn: async ({ id, ...data }: Partial<CreateAccountData> & { id: string }) => {
-      await accountsApi.updateAccount(user!.id, { id, ...data });
+      await accountsApi.updateAccount({ id, ...data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
@@ -55,7 +55,7 @@ export const useAccounts = () => {
 
   const deleteAccountMutation = useMutation({
     mutationFn: async (id: string) => {
-      await accountsApi.deleteAccount(user!.id, id);
+      await accountsApi.deleteAccount(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
@@ -80,6 +80,7 @@ export const useAccounts = () => {
     updateAccount: (data: Partial<CreateAccountData> & { id: string }) =>
       updateAccountMutation.mutateAsync(data),
     deleteAccount: (id: string) => deleteAccountMutation.mutateAsync(id),
+    fetchAccountForEdit: (id: string) => accountsApi.getAccount(id, true),
     isCreatingAccount: createAccountMutation.isPending,
     isUpdatingAccount: updateAccountMutation.isPending,
     isDeletingAccount: deleteAccountMutation.isPending,
@@ -87,3 +88,17 @@ export const useAccounts = () => {
 };
 
 export type { Account, CreateAccountData } from '@/types/account-types';
+
+/** Load full account details (unmasked) for the edit form. */
+export function useAccountForEdit(accountId: string | null, enabled: boolean) {
+  const { user } = useAuth();
+
+  return useQuery<Account | null>({
+    queryKey: ['account-edit', accountId, user?.id],
+    queryFn: async () => {
+      if (!accountId) return null;
+      return accountsApi.getAccount(accountId, true);
+    },
+    enabled: enabled && !!accountId && !!user,
+  });
+}

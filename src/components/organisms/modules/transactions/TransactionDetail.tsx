@@ -93,19 +93,19 @@ const buildEditFormState = (
     return {
       type: transaction.type,
       accountId: transaction.account_id,
-      categoryId: transaction.category_id || '',
+      categoryId: transaction.category_id ?? '',
       amount: String(transaction.amount),
       description: transaction.description || '',
       date: getDateInputValue(transaction.date),
-      fromAccountId: transferEntries.expense?.account_id || '',
-      toAccountId: transferEntries.income?.account_id || '',
+      fromAccountId: transferEntries.expense?.account_id ?? '',
+      toAccountId: transferEntries.income?.account_id ?? '',
     };
   }
 
   return {
     type: transaction.type,
     accountId: transaction.account_id,
-    categoryId: transaction.category_id || '',
+    categoryId: transaction.category_id ?? '',
     amount: String(transaction.amount),
     description: transaction.description || '',
     date: getDateInputValue(transaction.date),
@@ -450,7 +450,7 @@ export default function TransactionDetail({ transactionId }: TransactionDetailPr
     refetch: refetchLinkedDocuments,
   } = useQuery({
     queryKey: ['transaction-documents', transactionId, user?.id],
-    queryFn: () => documentsApi.getDocumentsByLinkedEntity(user!.id, transactionId),
+    queryFn: () => documentsApi.getDocumentsByLinkedEntity('transaction', transactionId),
     enabled: !!user && !!transactionId,
   });
 

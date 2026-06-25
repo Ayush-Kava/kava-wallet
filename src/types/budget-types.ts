@@ -1,6 +1,7 @@
+import { asNullablePublicId, asPublicId } from '@/lib/public-id';
+
 export interface Budget {
   id: string;
-  user_id: string;
   category_id: string | null;
   amount: number;
   period: string;
@@ -27,9 +28,8 @@ export interface UpdateBudgetData {
 }
 
 export const toBudgetType = (budget: any): Budget => ({
-  id: budget.id,
-  user_id: budget.userId,
-  category_id: budget.categoryId,
+  id: asPublicId(budget.publicId),
+  category_id: asNullablePublicId(budget.category?.publicId),
   amount: Number(budget.amount),
   period: budget.period,
   start_date: budget.start_date?.toISOString().split('T')[0],

@@ -7,7 +7,7 @@ export const useSummaryTransactions = () => {
 
   const { data, isLoading } = useQuery({
     queryKey: ['transactions', 'summary', user?.id],
-    queryFn: () => transactionsApi.getTransactions(user!.id, 1, 500),
+    queryFn: () => transactionsApi.getTransactions(1, 500),
     enabled: !!user,
   });
 

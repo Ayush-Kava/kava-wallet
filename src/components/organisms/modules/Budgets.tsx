@@ -18,22 +18,23 @@ import {
 } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useCategories } from '@/hooks/useCategories';
-import { useTransactions } from '@/hooks/useTransactions';
+import { useSummaryTransactions } from '@/hooks/useSummaryTransactions';
 import { useBudgets } from '@/hooks/useBudgets';
 import type { Budget } from '@/types/budget-types';
 import { Plus, Target, AlertTriangle, CheckCircle2, Trash2, Loader2, Pencil } from 'lucide-react';
 import { CategoryOption } from '@/components/molecules/categories/CategoryOption';
 import { CategoryIcon } from '@/components/molecules/categories/CategoryIcon';
+import { uuidSchema } from '@/lib/validation/common';
 
 const budgetSchema = z.object({
-  category_id: z.string().min(1, 'Please select a category'),
+  category_id: uuidSchema,
   amount: z.number().positive('Amount must be positive'),
   period: z.enum(['monthly', 'yearly']),
 });
 
 const Budgets = () => {
   const { expenseCategories } = useCategories();
-  const { transactions } = useTransactions();
+  const { transactions } = useSummaryTransactions();
   const { budgets, isLoading, createBudget, updateBudget, deleteBudget, isCreatingBudget, isUpdatingBudget } =
     useBudgets();
 
@@ -67,7 +68,7 @@ const Budgets = () => {
       const periodEnd = budget.period === 'yearly' ? endOfYear(now) : endOfMonth(now);
 
       const categoryTransactions = transactions.filter(t => {
-        if (t.type !== 'expense') return false;
+        if (t.type !== 'expense' || t.transfer_id) return false;
         if (t.category_id !== budget.category_id) return false;
         const date = new Date(t.date);
         return date >= periodStart && date <= periodEnd;
@@ -105,7 +106,7 @@ const Budgets = () => {
 
   const openEditDialog = (budget: Budget) => {
     setEditingBudget(budget);
-    setCategoryId(budget.category_id || '');
+    setCategoryId(budget.category_id ?? '');
     setAmount(String(budget.amount));
     setPeriod(budget.period as 'monthly' | 'yearly');
     setFormErrors({});

@@ -1,9 +1,10 @@
+import { asNullablePublicId, asPublicId } from '@/lib/public-id';
+
 export type RecurringType = 'income' | 'expense' | 'transfer';
 export type RecurringFrequency = 'weekly' | 'monthly' | 'yearly';
 
 export interface RecurringRule {
   id: string;
-  user_id: string;
   name: string;
   description?: string | null;
   type: RecurringType;
@@ -42,18 +43,17 @@ export interface UpdateRecurringRuleData extends Partial<CreateRecurringRuleData
 }
 
 export const toRecurringRuleType = (rule: any): RecurringRule => ({
-  id: rule.id,
-  user_id: rule.userId,
+  id: asPublicId(rule.publicId),
   name: rule.name,
   description: rule.description,
   type: rule.type,
   frequency: rule.frequency,
   amount: Number(rule.amount),
-  account_id: rule.accountId,
-  from_account_id: rule.fromAccountId,
-  to_account_id: rule.toAccountId,
-  category_id: rule.categoryId,
-  loan_id: rule.loanId,
+  account_id: asNullablePublicId(rule.account?.publicId),
+  from_account_id: asNullablePublicId(rule.fromAccount?.publicId),
+  to_account_id: asNullablePublicId(rule.toAccount?.publicId),
+  category_id: asNullablePublicId(rule.category?.publicId),
+  loan_id: asNullablePublicId(rule.loan?.publicId),
   next_run_date: rule.next_run_date?.toISOString().split('T')[0],
   end_date: rule.end_date?.toISOString().split('T')[0] || null,
   paused: rule.paused,

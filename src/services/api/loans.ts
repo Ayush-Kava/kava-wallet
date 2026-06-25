@@ -34,25 +34,21 @@ const calculateEMISchedule = (
 };
 
 export const loansApi = {
-  getLoans: async (userId: string): Promise<Loan[]> => {
-    return apiFetch<Loan[]>(`/api/loans?userId=${encodeURIComponent(userId)}`);
+  getLoans: async (): Promise<Loan[]> => {
+    return apiFetch<Loan[]>('/api/loans');
   },
 
-  getLoan: async (userId: string, loanId: string): Promise<Loan> => {
-    return apiFetch<Loan>(`/api/loans/${loanId}?userId=${encodeURIComponent(userId)}`);
+  getLoan: async (loanId: string): Promise<Loan> => {
+    return apiFetch<Loan>(`/api/loans/${loanId}`);
   },
 
-  createLoan: async (userId: string, payload: CreateLoanData): Promise<Loan> => {
-    const loan = await apiFetch<Loan>(`/api/loans`, 'POST', {
-      ...payload,
-      user_id: userId,
-    });
+  createLoan: async (payload: CreateLoanData): Promise<Loan> => {
+    const loan = await apiFetch<Loan>('/api/loans', 'POST', payload);
 
-    // Auto-create recurring EMI rule
     const nextEmiDate = addMonths(new Date(payload.start_date), 1);
     const endDate = addMonths(new Date(payload.start_date), payload.tenure_months);
 
-    await recurringRulesApi.createRecurringRule(userId, {
+    await recurringRulesApi.createRecurringRule({
       name: `EMI - ${payload.name}`,
       description: `Automated EMI for ${payload.name}`,
       amount: payload.emi_amount,
@@ -71,27 +67,20 @@ export const loansApi = {
     return loan;
   },
 
-  updateLoan: async (userId: string, { id, ...rest }: UpdateLoanData): Promise<void> => {
-    await apiFetch<void>(`/api/loans/${id}`, 'PUT', {
-      ...rest,
-      user_id: userId,
-    });
+  updateLoan: async ({ id, ...rest }: UpdateLoanData): Promise<void> => {
+    await apiFetch<void>(`/api/loans/${id}`, 'PUT', rest);
   },
 
-  deleteLoan: async (userId: string, loanId: string): Promise<void> => {
-    await apiFetch<void>(`/api/loans/${loanId}`, 'DELETE', {
-      user_id: userId,
-    });
+  deleteLoan: async (loanId: string): Promise<void> => {
+    await apiFetch<void>(`/api/loans/${loanId}`, 'DELETE');
   },
 
   getEMISchedule: (loan: Loan): EMIScheduleItem[] => {
     return calculateEMISchedule(loan.principal, loan.interest_rate, loan.tenure_months);
   },
 
-  calculateOutstandingBalance: async (userId: string, loanId: string): Promise<number> => {
-    const result = await apiFetch<{ outstanding: number }>(
-      `/api/loans/${loanId}/outstanding?userId=${encodeURIComponent(userId)}`,
-    );
+  calculateOutstandingBalance: async (loanId: string): Promise<number> => {
+    const result = await apiFetch<{ outstanding: number }>(`/api/loans/${loanId}/outstanding`);
     return result.outstanding;
   },
 };

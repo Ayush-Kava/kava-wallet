@@ -2,31 +2,19 @@ import { apiFetch } from '@/lib/api-client';
 import type { Category, CreateCategoryData, UpdateCategoryData } from '@/types/category-types';
 
 export const categoriesApi = {
-  getCategories: async (userId: string): Promise<Category[]> => {
-    return apiFetch<Category[]>(`/api/categories?userId=${encodeURIComponent(userId)}`);
+  getCategories: async (): Promise<Category[]> => {
+    return apiFetch<Category[]>('/api/categories');
   },
 
-  createCategory: async (userId: string, newCategory: CreateCategoryData): Promise<Category> => {
-    return apiFetch<Category>(`/api/categories`, 'POST', {
-      ...newCategory,
-      user_id: userId,
-    });
+  createCategory: async (newCategory: CreateCategoryData): Promise<Category> => {
+    return apiFetch<Category>('/api/categories', 'POST', newCategory);
   },
 
-  updateCategory: async (
-    userId: string,
-    id: string,
-    data: UpdateCategoryData,
-  ): Promise<Category> => {
-    return apiFetch<Category>(`/api/categories/${id}`, 'PUT', {
-      ...data,
-      user_id: userId,
-    });
+  updateCategory: async (id: string, data: UpdateCategoryData): Promise<Category> => {
+    return apiFetch<Category>(`/api/categories/${id}`, 'PUT', data);
   },
 
-  deleteCategory: async (userId: string, id: string): Promise<void> => {
-    await apiFetch<void>(`/api/categories/${id}`, 'DELETE', {
-      user_id: userId,
-    });
+  deleteCategory: async (id: string): Promise<void> => {
+    await apiFetch<void>(`/api/categories/${id}`, 'DELETE');
   },
 };
